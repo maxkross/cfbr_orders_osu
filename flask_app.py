@@ -25,7 +25,7 @@ def homepage():
     confirmation = request.args.get('confirmed', default = 0, type = int)
 
     try:
-        log = f"{config['ROOT']}/files/log.txt"
+        log = f"{config['ROOT']}/log.txt"
         log = open(log, "a")
     except:
         return "Well, this is a problem. Someone tell the admin that the log file is corrupted."
@@ -286,7 +286,7 @@ def what_day_is_it():
 def make_authorization_url():
     state = str(uuid4())
     save_created_state(state)
-    params = {"client_id": config['CLIENT_ID'],
+    params = {"client_id": config['REDDIT_CLIENT_ID'],
               "response_type": "code",
               "state": state,
               "redirect_uri": config['REDIRECT_URI'],
@@ -301,7 +301,7 @@ def is_valid_state(state):
     return True
 
 def get_token(code):
-    client_auth = requests.auth.HTTPBasicAuth(config['CLIENT_ID'], config['CLIENT_SECRET'])
+    client_auth = requests.auth.HTTPBasicAuth(config['REDDIT_CLIENT_ID'], config['REDDIT_CLIENT_SECRET'])
     post_data = {"grant_type": "authorization_code",
                  "code": code,
                  "redirect_uri": config['REDIRECT_URI']}
@@ -402,4 +402,4 @@ def total_turn_stars(total_turns):
 ###############################################################
 
 if __name__ == '__main__':
-    app.run(debug=True, port=80)
+    app.run(debug=True, port=config['HTTP_PORT'])
