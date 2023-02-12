@@ -1,7 +1,3 @@
-CLIENT_ID = "2XLAGgeWYjmlmkMjvS4XIA"
-CLIENT_SECRET = ""
-REDIRECT_URI = "http://www.whataremyorders.com/reddit_callback"
-
 from flask import Flask, abort, request, make_response, redirect
 import requests
 import requests.auth
@@ -12,8 +8,10 @@ from flask import render_template
 import math
 import statistics
 from pytz import timezone
+from dotenv import dotenv_values
 
 app = Flask(__name__)
+config = dotenv_values('.env')
 
 ###############################################################
 #
@@ -27,7 +25,7 @@ def homepage():
     confirmation = request.args.get('confirmed', default = 0, type = int)
 
     try:
-        log = "/home/drunner/mysite/files/log.txt"
+        log = f"{config['ROOT']}/files/log.txt"
         log = open(log, "a")
     except:
         return "Well, this is a problem. Someone tell the admin that the log file is corrupted."
@@ -40,7 +38,7 @@ def homepage():
         return resp
     else:
         headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
-        response = requests.get("https://oauth.reddit.com/api/v1/me", headers=headers)
+        response = requests.get(config['REDDIT_ACCOUNT_URI'], headers=headers)
         if (response.status_code == 401):
             log.write("Error,"+access_token+",401 Error from CFBR API\n" )
             header1 = "Welcome to Central Command!"
@@ -53,16 +51,17 @@ def homepage():
             hoy = what_day_is_it()
 
             # Let's get this user's CFBR info
-            response = requests.get("https://collegefootballrisk.com/api/player?player="+username)
+            response = requests.get(f"{config['CFBR_REST_API']}/player?player={username}")
             active_team = response.json()['active_team']['name']
             current_stars = response.json()['ratings']['overall']
 
             order_msg = ""
             display_button = False
             # Enemy rogue or SPY!!!! Just give them someone to attack.
-            if active_team != "Michigan":
+            if active_team != config['THE_GOOD_GUYS']:
                 try:
-                    foreign_file = CFBR_day()+"-"+CFBR_month()+"foreign.txt"
+                    # NB: This didn't originally include the full path, so I added it  --Tapin
+                    foreign_file = f"{config['ROOT']}{CFBR_day()}-{CFBR_month()}foreign.txt"
                     foreign_file = open(foreign_file, "r")
                     f_orders = {}
                     for f_order in foreign_file:
@@ -85,7 +84,7 @@ def homepage():
                     order = existing_assignment
                 else: # Newly made assignment
                     order_msg = "Your order is to attack/defend "
-                    completed_file = "/home/drunner/mysite/files/"+CFBR_day()+ "-" + CFBR_month()+"orders-completed.txt"
+                    completed_file = f"{config['ROOT']}{CFBR_day()}-{CFBR_month()}orders-completed.txt"
                     completed_file = open(completed_file, "a")
                     completed_file.write(username+","+order+","+str(current_stars)+"\n")
                     completed_file.close()
@@ -112,25 +111,25 @@ def homepage():
 
 @app.route('/reddit_callback')
 def reddit_callback():
-	error = request.args.get('error', '')
-	if error:
-		return "Error: " + error
-	state = request.args.get('state', '')
-	if not is_valid_state(state):
-		# Uh-oh, this request wasn't started by us!
-	    try:
-	        log = "/home/drunner/mysite/files/log.txt"
-	        log = open(log, "a")
-	    except:
-	        return "Well, this is a problem. Someone tell the admin that the log file is corrupted."
-	        log.write("ERROR,"+","+CFBR_day()+"-"+CFBR_month()+","+what_day_is_it()+"unknown,403 from Reddit Auth API. WTF bro.\n")
-	    abort(403)
-	code = request.args.get('code')
-	access_token = get_token(code)
+    error = request.args.get('error', '')
+    if error:
+        return "Error: " + error
+    state = request.args.get('state', '')
+    if not is_valid_state(state):
+        # Uh-oh, this request wasn't started by us!
+        try:
+            log = f"{config['ROOT']}/log.txt"
+            log = open(log, "a")
+        except:
+            log.write("ERROR,"+","+CFBR_day()+"-"+CFBR_month()+","+what_day_is_it()+"unknown,403 from Reddit Auth API. WTF bro.\n")
+            return "Well, this is a problem. Someone tell the admin that the log file is corrupted."
+        abort(403)
+    code = request.args.get('code')
+    access_token = get_token(code)
 
-	response = make_response(redirect('/'))
-	response.set_cookie('a', access_token.encode())
-	return response
+    response = make_response(redirect('/'))
+    response.set_cookie('a', access_token.encode())
+    return response
 
 ###############################################################
 #
@@ -139,7 +138,7 @@ def reddit_callback():
 ###############################################################
 
 def get_next_order(hoy_d, hoy_m, username, current_stars):
-    log = "/home/drunner/mysite/files/log.txt"
+    log = f"{config['ROOT']}/log.txt"
     log = open(log, "a")
     try:
         # Get already assigned moves
@@ -178,7 +177,7 @@ def get_next_order(hoy_d, hoy_m, username, current_stars):
         return None
 
 def get_orders(hoy_d, hoy_m):
-    order_file = "/home/drunner/mysite/files/"+hoy_d+"-"+hoy_m+"orders.txt"
+    order_file =f"{config['ROOT']}/{hoy_d}-{hoy_m}orders.txt"
     try:
         order_file = open(order_file, "r")
     except:
@@ -203,10 +202,10 @@ def get_tiers(orders):
     return tiers
 
 def get_assigned_orders(hoy_d, hoy_m):
-    log = "/home/drunner/mysite/files/log.txt"
+    log = f"{config['ROOT']}/log.txt"
     log = open(log, "a")
     try:
-        completed_file = "/home/drunner/mysite/files/"+hoy_d+"-"+hoy_m+"orders-completed.txt"
+        completed_file =f"{config['ROOT']}/{hoy_d}-{hoy_m}orders-completed.txt"
         completed_file = open(completed_file, "r")
     except:
         return None
@@ -227,7 +226,7 @@ def get_assigned_orders(hoy_d, hoy_m):
 
 def user_already_assigned(username, hoy_d, hoy_m):
     try:
-        completed_file = "/home/drunner/mysite/files/"+hoy_d+"-"+hoy_m+"orders-completed.txt"
+        completed_file =f"{config['ROOT']}/{hoy_d}-{hoy_m}orders-completed.txt"
         completed_file = open(completed_file, "r")
     except:
         return None
@@ -285,37 +284,37 @@ def what_day_is_it():
 ###############################################################
 
 def make_authorization_url():
-	state = str(uuid4())
-	save_created_state(state)
-	params = {"client_id": CLIENT_ID,
-			  "response_type": "code",
-			  "state": state,
-			  "redirect_uri": REDIRECT_URI,
-			  "duration": "temporary",
-			  "scope": "identity"}
-	url = "https://old.reddit.com/api/v1/authorize?" + urllib.parse.urlencode(params)
-	return url
+    state = str(uuid4())
+    save_created_state(state)
+    params = {"client_id": config['CLIENT_ID'],
+              "response_type": "code",
+              "state": state,
+              "redirect_uri": config['REDIRECT_URI'],
+              "duration": "temporary",
+              "scope": "identity"}
+    url = f"{config['REDDIT_AUTH_URI']}?{urllib.parse.urlencode(params)}"
+    return url
 
 def save_created_state(state):
-	pass
+    pass
 def is_valid_state(state):
-	return True
+    return True
 
 def get_token(code):
-	client_auth = requests.auth.HTTPBasicAuth(CLIENT_ID, CLIENT_SECRET)
-	post_data = {"grant_type": "authorization_code",
-				 "code": code,
-				 "redirect_uri": REDIRECT_URI}
-	response = requests.post("https://ssl.reddit.com/api/v1/access_token",
-							 auth=client_auth,
-							 headers = {'User-agent': 'CFB Risk Orders'},
-							 data=post_data)
-	token_json = response.json()
-	return token_json['access_token']
+    client_auth = requests.auth.HTTPBasicAuth(config['CLIENT_ID'], config['CLIENT_SECRET'])
+    post_data = {"grant_type": "authorization_code",
+                 "code": code,
+                 "redirect_uri": config['REDIRECT_URI']}
+    response = requests.post(config['REDDIT_TOKEN_URI'],
+                             auth=client_auth,
+                             headers = {'User-agent': 'CFB Risk Orders'},
+                             data=post_data)
+    token_json = response.json()
+    return token_json['access_token']
 
 def get_username(access_token):
     headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
-    response = requests.get("https://oauth.reddit.com/api/v1/me", headers=headers)
+    response = requests.get(config['REDDIT_ACCOUNT_URI'], headers=headers)
     me_json = response.json()
     return me_json['name']
 
@@ -403,4 +402,4 @@ def total_turn_stars(total_turns):
 ###############################################################
 
 if __name__ == '__main__':
-	app.run(debug=True, port=80)
+    app.run(debug=True, port=80)
