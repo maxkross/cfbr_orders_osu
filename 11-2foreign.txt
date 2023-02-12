@@ -1,0 +1,14 @@
+Texas A&M,Hattiesburg
+Ohio State,Athens
+Georgia Tech,Columbia
+Texas,Tempe
+Wisconsin,Colorado Springs
+Tennessee,Jonesboro
+Oklahoma,Zacatecas
+Alabama,Baton Rouge
+Chaos,Monroe
+Oregon,Fresno
+Nebraska,Tempe
+Iowa State,Manhattan
+Florida,Miami
+LSU,Chiapas

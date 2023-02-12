@@ -1,0 +1,4 @@
+Ann Arbor,1,6
+Seattle,1,7
+Vancouver,2,2
+Alaska,3,1
