@@ -24,11 +24,7 @@ def homepage():
     access_token = request.cookies.get('a')
     confirmation = request.args.get('confirmed', default = 0, type = int)
 
-    try:
-        log = f"{config['ROOT']}/log.txt"
-        log = open(log, "a")
-    except:
-        return "Well, this is a problem. Someone tell the admin that the log file is corrupted."
+    log = get_log_file()
 
     if (access_token == None):
         header1 = "Welcome to Central Command!"
@@ -60,8 +56,7 @@ def homepage():
             # Enemy rogue or SPY!!!! Just give them someone to attack.
             if active_team != config['THE_GOOD_GUYS']:
                 try:
-                    # NB: This didn't originally include the full path, so I added it  --Tapin
-                    foreign_file = f"{config['ROOT']}{CFBR_day()}-{CFBR_month()}foreign.txt"
+                    foreign_file = f"{config['ROOT']}/files/{CFBR_day()}-{CFBR_month()}foreign.txt"
                     foreign_file = open(foreign_file, "r")
                     f_orders = {}
                     for f_order in foreign_file:
@@ -84,7 +79,7 @@ def homepage():
                     order = existing_assignment
                 else: # Newly made assignment
                     order_msg = "Your order is to attack/defend "
-                    completed_file = f"{config['ROOT']}{CFBR_day()}-{CFBR_month()}orders-completed.txt"
+                    completed_file = f"{config['ROOT']}/files/{CFBR_day()}-{CFBR_month()}orders-completed.txt"
                     completed_file = open(completed_file, "a")
                     completed_file.write(username+","+order+","+str(current_stars)+"\n")
                     completed_file.close()
@@ -117,12 +112,8 @@ def reddit_callback():
     state = request.args.get('state', '')
     if not is_valid_state(state):
         # Uh-oh, this request wasn't started by us!
-        try:
-            log = f"{config['ROOT']}/log.txt"
-            log = open(log, "a")
-        except:
-            log.write("ERROR,"+","+CFBR_day()+"-"+CFBR_month()+","+what_day_is_it()+"unknown,403 from Reddit Auth API. WTF bro.\n")
-            return "Well, this is a problem. Someone tell the admin that the log file is corrupted."
+        log = get_log_file()
+        log.write("ERROR,"+","+CFBR_day()+"-"+CFBR_month()+","+what_day_is_it()+"unknown,403 from Reddit Auth API. WTF bro.\n")
         abort(403)
     code = request.args.get('code')
     access_token = get_token(code)
@@ -138,8 +129,7 @@ def reddit_callback():
 ###############################################################
 
 def get_next_order(hoy_d, hoy_m, username, current_stars):
-    log = f"{config['ROOT']}/log.txt"
-    log = open(log, "a")
+    log = get_log_file()
     try:
         # Get already assigned moves
         assigned_orders = get_assigned_orders(hoy_d, hoy_m)
@@ -177,7 +167,7 @@ def get_next_order(hoy_d, hoy_m, username, current_stars):
         return None
 
 def get_orders(hoy_d, hoy_m):
-    order_file =f"{config['ROOT']}/{hoy_d}-{hoy_m}orders.txt"
+    order_file =f"{config['ROOT']}/files/{hoy_d}-{hoy_m}orders.txt"
     try:
         order_file = open(order_file, "r")
     except:
@@ -202,10 +192,10 @@ def get_tiers(orders):
     return tiers
 
 def get_assigned_orders(hoy_d, hoy_m):
-    log = f"{config['ROOT']}/log.txt"
-    log = open(log, "a")
+    # NB log isn't used in this function at the moment
+    log = get_log_file()
     try:
-        completed_file =f"{config['ROOT']}/{hoy_d}-{hoy_m}orders-completed.txt"
+        completed_file =f"{config['ROOT']}/files/{hoy_d}-{hoy_m}orders-completed.txt"
         completed_file = open(completed_file, "r")
     except:
         return None
@@ -394,6 +384,20 @@ def total_turn_stars(total_turns):
     elif(total_turns > 9):
         stars = 2
     return stars
+
+###############################################################
+#
+# Filenames
+#
+###############################################################
+def get_log_file():
+    try:
+        fname = f"{config['ROOT']}/files/log.txt"
+        fs = open(fname, "a")
+    except:
+        return "Well, this is a problem. Someone tell the admin that the log file is corrupted."
+
+    return fs
 
 ###############################################################
 #
