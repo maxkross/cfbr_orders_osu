@@ -28,6 +28,17 @@ CREATE TABLE IF NOT EXISTS plans (
         REFERENCES territory (id)
 );
 
+CREATE TABLE IF NOT EXISTS order (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season INTEGER,
+    day INTEGER,
+    user TEXT NOT NULL UNIQUE,
+    territory INTEGER,
+    stars INTEGER,
+    FOREIGN KEY (territory)
+        REFERENCES territory (id)
+);
+
 INSERT INTO region VALUES(0,"Unplaced");
 INSERT INTO region VALUES(1,"Pacific Northwest");
 INSERT INTO region VALUES(2,"Northern Lights");
