@@ -19,14 +19,15 @@ CREATE TABLE IF NOT EXISTS territory (
 
 CREATE TABLE IF NOT EXISTS plans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    season INTEGER,
-    day INTEGER,
-    territory INTEGER,
+    season INTEGER NOT NULL,
+    day INTEGER NOT NULL,
+    territory INTEGER NOT NULL,
     tier INTEGER,
     quota INTEGER,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
+CREATE UNIQUE INDEX plans_for_day_and_territory ON plans (season, day, territory);
 
 CREATE TABLE IF NOT EXISTS enemy_plans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

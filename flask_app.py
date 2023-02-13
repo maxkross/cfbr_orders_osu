@@ -1,4 +1,4 @@
-from flask import Flask, abort, request, make_response, redirect
+from flask import Flask, abort, request, make_response, redirect, g
 import requests
 import requests.auth
 from uuid import uuid4
@@ -13,7 +13,6 @@ import sqlite3
 
 app = Flask(__name__)
 config = dotenv_values('.env')
-db = sqlite3.connect(config['DB'])
 
 ###############################################################
 #
@@ -120,41 +119,38 @@ def reddit_callback():
 
 def get_next_order(hoy_d, hoy_m, username, current_stars):
     log = get_log_file()
-    try:
-        # Get already assigned moves
-        assigned_orders = get_assigned_orders(hoy_d, hoy_m)
+    # Get already assigned moves
+    assigned_orders = get_assigned_orders(hoy_d, hoy_m)
 
-        # Get the orders for this round and count tiers
-        round_orders = get_orders(hoy_d, hoy_m)
-        tiers = get_tiers(round_orders)
+    # Get the orders for this round and count tiers
+    round_orders = get_orders(hoy_d, hoy_m)
+    tiers = get_tiers(round_orders)
 
-        # For each tier, calculate denom and figure out lowest % complete,
-        # if tier 1 store floor, if lowest in tier below 100% then return,
-        # if lowest in tier above 100% and last tier then return floor
-        floor_terr = ""
-        for i in range(1, tiers+1):
-            lowest_score = 999999
-            lowest_terr = ""
-            for rorder in round_orders:
-                if int(round_orders[rorder][0]) == i:
-                    if rorder in assigned_orders:
-                        if int(assigned_orders[rorder]) / int(round_orders[rorder][1]) < lowest_score:
-                            lowest_score = int(assigned_orders[rorder]) / int(round_orders[rorder][1])
-                            lowest_terr = rorder
-                    else:
-                        lowest_score = 0
+    # For each tier, calculate denom and figure out lowest % complete,
+    # if tier 1 store floor, if lowest in tier below 100% then return,
+    # if lowest in tier above 100% and last tier then return floor
+    floor_terr = ""
+    for i in range(1, tiers+1):
+        lowest_score = 999999
+        lowest_terr = ""
+        for rorder in round_orders:
+            if int(round_orders[rorder][0]) == i:
+                if rorder in assigned_orders:
+                    if int(assigned_orders[rorder]) / int(round_orders[rorder][1]) < lowest_score:
+                        lowest_score = int(assigned_orders[rorder]) / int(round_orders[rorder][1])
                         lowest_terr = rorder
+                else:
+                    lowest_score = 0
+                    lowest_terr = rorder
 
-            if i == 1:
-                floor_terr = lowest_terr
+        if i == 1:
+            floor_terr = lowest_terr
 
-            if lowest_score < 1:
-                return lowest_terr
+        if lowest_score < 1:
+            return lowest_terr
 
-            if (i == tiers) and (lowest_score >= 1):
-                return floor_terr
-    except Exception as e:
-        return None
+        if (i == tiers) and (lowest_score >= 1):
+            return floor_terr
 
 def get_orders(hoy_d, hoy_m):
     query = '''
@@ -163,15 +159,15 @@ def get_orders(hoy_d, hoy_m):
             p.tier,
             p.quota
         FROM plans p
-            LEFT JOIN territory t on p.territory=t.id
+            INNER JOIN territory t on p.territory=t.id
         WHERE
             season=?
             AND day=?
         ORDER BY 
             p.tier ASC, 
-            p.stars DESC
+            p.quota DESC
     '''
-    res = db.execute(query, (hoy_m, hoy_d))
+    res = get_db().execute(query, (hoy_m, hoy_d))
     round_orders = {}
     for row in res:
         territory, tier, stars = row
@@ -192,14 +188,14 @@ def get_assigned_orders(hoy_d, hoy_m):
             t.name, 
             SUM(o.stars) as stars
         FROM orders o 
-            LEFT JOIN territory t ON o.territory=t.id
+            INNER JOIN territory t ON o.territory=t.id
         WHERE 
             season=?
             AND day=?
         GROUP BY t.name
         ORDER BY stars DESC
         '''
-    res = db.execute(query, (hoy_m, hoy_d))
+    res = get_db().execute(query, (hoy_m, hoy_d))
     territory_moves = dict(res.fetchall())
     res.close()
     return territory_moves
@@ -209,14 +205,14 @@ def user_already_assigned(username, hoy_d, hoy_m):
         SELECT
             t.name
         FROM orders o
-            LEFT JOIN territory t ON o.territory=t.id
+            INNER JOIN territory t ON o.territory=t.id
         WHERE
-            username=?
+            user=?
             AND season=?
             AND day=?
         LIMIT 1
     '''
-    res = db.execute(query, (username, hoy_m, hoy_d))
+    res = get_db().execute(query, (username, hoy_m, hoy_d))
     cmove = res.fetchone()
     res.close()
 
@@ -228,7 +224,7 @@ def get_foreign_order(team, hoy_d, hoy_m):
             t.name, 
             SUM(o.stars) as stars
         FROM orders o 
-            LEFT JOIN territory t ON o.territory=t.id
+            INNER JOIN territory t ON o.territory=t.id
         WHERE 
             team=?
             AND season=?
@@ -236,7 +232,7 @@ def get_foreign_order(team, hoy_d, hoy_m):
         GROUP BY t.name
         ORDER BY stars DESC
     '''
-    res = db.execute(query, (team, hoy_m, hoy_d))
+    res = get_db().execute(query, (team, hoy_m, hoy_d))
     fmove = res.fetchone()
     res.close()
 
@@ -248,7 +244,9 @@ def write_new_order(username, order, current_stars):
         INSERT INTO orders (season, day, user, territory, stars)
         VALUES (?, ?, ?, ?, ?)
     '''
-    db.execute(query, (CFBR_month, CFBR_day(), username, order, current_stars))
+    db = get_db()
+    db.execute(query, (CFBR_month(), CFBR_day(), username, order, current_stars))
+    db.commit()
 
 ###############################################################
 #
@@ -418,6 +416,23 @@ def get_log_file():
         return "Well, this is a problem. Someone tell the admin that the log file is corrupted."
 
     return fs
+
+###############################################################
+#
+# Database -- taken from https://flask.palletsprojects.com/en/2.2.x/patterns/sqlite3/
+#
+###############################################################
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(config['DB'])
+    return db
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
 
 ###############################################################
 #
