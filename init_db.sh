@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS plans (
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
-CREATE UNIQUE INDEX plans_for_day_and_territory ON plans (season, day, territory);
+CREATE UNIQUE INDEX plans_for_day_and_territory ON plans (season, day, territory, tier);
 
 CREATE TABLE IF NOT EXISTS enemy_plans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
