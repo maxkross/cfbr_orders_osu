@@ -28,7 +28,17 @@ CREATE TABLE IF NOT EXISTS plans (
         REFERENCES territory (id)
 );
 
-CREATE TABLE IF NOT EXISTS order (
+CREATE TABLE IF NOT EXISTS enemy_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season INTEGER,
+    day INTEGER,
+    team TEXT NOT NULL UNIQUE,
+    territory INTEGER,
+    FOREIGN KEY (territory)
+        REFERENCES territory (id)
+);
+
+CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     season INTEGER,
     day INTEGER,
@@ -194,6 +204,60 @@ INSERT INTO territory VALUES(128,"Kalamazoo",7);
 INSERT INTO territory VALUES(129,"Morgantown",5);
 INSERT INTO territory VALUES(130,"Wisconsin",7);
 INSERT INTO territory VALUES(131,"Wyoming",8);
+INSERT INTO territory VALUES(133,"Pampa",12);
+INSERT INTO territory VALUES(134,"Manitoba",2);
+INSERT INTO territory VALUES(135,"Saskatchewan",2);
+INSERT INTO territory VALUES(136,"Alberta",2);
+INSERT INTO territory VALUES(137,"British Columbia",1);
+INSERT INTO territory VALUES(138,"Nunavut",2);
+INSERT INTO territory VALUES(139,"Northwest Territories",2);
+INSERT INTO territory VALUES(140,"Yukon",1);
+INSERT INTO territory VALUES(141,"Thunder Bay",2);
+INSERT INTO territory VALUES(143,"New Brunswick",3);
+INSERT INTO territory VALUES(144,"Nova Scotia",3);
+INSERT INTO territory VALUES(145,"Newfoundland",3);
+INSERT INTO territory VALUES(146,"Prince Edward Island",3);
+INSERT INTO territory VALUES(148,"Tabasco",20);
+INSERT INTO territory VALUES(150,"Veracruz",19);
+INSERT INTO territory VALUES(151,"Puebla",19);
+INSERT INTO territory VALUES(156,"México",19);
+INSERT INTO territory VALUES(158,"Baja California",9);
+INSERT INTO territory VALUES(160,"Chihuahua",19);
+INSERT INTO territory VALUES(162,"Tamaulipas",19);
+INSERT INTO territory VALUES(163,"Nuevo León",19);
+INSERT INTO territory VALUES(164,"Sinaloa",19);
+INSERT INTO territory VALUES(166,"Jalisco",19);
+INSERT INTO territory VALUES(167,"Belize",20);
+INSERT INTO territory VALUES(170,"Zacatecas",19);
+INSERT INTO territory VALUES(174,"Guerrero",19);
+INSERT INTO territory VALUES(176,"Quintana Roo",20);
+INSERT INTO territory VALUES(177,"Yucatán",20);
+INSERT INTO territory VALUES(178,"Bahamas",20);
+INSERT INTO territory VALUES(179,"Dominican Republic",20);
+INSERT INTO territory VALUES(180,"Haiti",20);
+INSERT INTO territory VALUES(181,"Puerto Rico",20);
+INSERT INTO territory VALUES(182,"Cuba",20);
+INSERT INTO territory VALUES(183,"Jamaica",20);
+INSERT INTO territory VALUES(184,"Chiapas",20);
+INSERT INTO territory VALUES(185,"Oaxaca",19);
+INSERT INTO territory VALUES(186,"Bermuda",22);
+INSERT INTO territory VALUES(187,"Guatemala",20);
+INSERT INTO territory VALUES(188,"Springfield",11);
+INSERT INTO territory VALUES(189,"Texarkana",14);
+INSERT INTO territory VALUES(190,"Cariboo",1);
+INSERT INTO territory VALUES(191,"Fort Mcmurray",2);
+INSERT INTO territory VALUES(192,"Regina",2);
+INSERT INTO territory VALUES(193,"Winnipeg",2);
+INSERT INTO territory VALUES(194,"Moose River",2);
+INSERT INTO territory VALUES(195,"Cote Nord",3);
+INSERT INTO territory VALUES(196,"Toronto",7);
+INSERT INTO territory VALUES(197,"Sault Ste Marie",7);
+INSERT INTO territory VALUES(198,"Labrador",3);
+INSERT INTO territory VALUES(199,"Sherbrooke",3);
+INSERT INTO territory VALUES(200,"Montreal",3);
+INSERT INTO territory VALUES(201,"Montana",8);
+INSERT INTO territory VALUES(202,"Dakotas",8);
+INSERT INTO territory VALUES(203,"Vancouver",1);
 
 COMMIT;
 
