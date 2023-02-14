@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS orders (
     user TEXT NOT NULL UNIQUE,
     territory INTEGER,
     stars INTEGER,
+    accepted BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
