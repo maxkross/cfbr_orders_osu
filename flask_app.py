@@ -1,10 +1,9 @@
-from flask import Flask, abort, request, make_response, redirect
+from flask import Flask, abort, request, make_response, redirect, render_template
 import requests
 import requests.auth
 from uuid import uuid4
 import urllib
 from datetime import datetime, timedelta
-from flask import render_template
 import math
 import statistics
 from pytz import timezone
@@ -22,24 +21,21 @@ config = dotenv_values('.env')
 @app.route('/')
 def homepage():
     access_token = request.cookies.get('a')
-    confirmation = request.args.get('confirmed', default = 0, type = int)
+    confirmation = request.args.get('confirmed', default=0, type=int)
 
     log = get_log_file()
 
-    if (access_token == None):
-        header1 = "Welcome to Central Command!"
+    if access_token is None:
         link = make_authorization_url()
-
-        resp = make_response(render_template('auth.html', title='What Are My Orders?', header=header1, authlink=link))
+        resp = make_response(render_template('auth.html', authlink=link))
         return resp
     else:
         headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
         response = requests.get(config['REDDIT_ACCOUNT_URI'], headers=headers)
-        if (response.status_code == 401):
-            log.write("Error,"+access_token+",401 Error from CFBR API\n" )
-            header1 = "Welcome to Central Command!"
+        if response.status_code == 401:
+            log.write(f"Error,{access_token},401 Error from CFBR API\n")
             link = make_authorization_url()
-            resp = make_response(render_template('auth.html', title='What Are My Orders?', header=header1, authlink=link))
+            resp = make_response(render_template('auth.html', authlink=link))
             return resp
         else:
             # Let's get the basics
@@ -51,57 +47,48 @@ def homepage():
             active_team = response.json()['active_team']['name']
             current_stars = response.json()['ratings']['overall']
 
-            order_msg = ""
-            display_button = False
+            order = ""
             # Enemy rogue or SPY!!!! Just give them someone to attack.
             if active_team != config['THE_GOOD_GUYS']:
-                try:
-                    foreign_file = f"{config['ROOT']}/files/{CFBR_day()}-{CFBR_month()}foreign.txt"
-                    foreign_file = open(foreign_file, "r")
+                foreign_file = f"{config['ROOT']}/files/{CFBR_day()}-{CFBR_month()}foreign.txt"
+                with open(foreign_file, "r") as foreign_file:
                     f_orders = {}
                     for f_order in foreign_file:
                         f_orders[f_order.split(",")[0].strip()] = f_order.split(",")[1].strip()
-                    order_msg = "Your order is to attack/defend " + f_orders[active_team] + "."
-                    foreign_file.close()
-                except:
-                    order_msg = "Orders have not been loaded for today. Please check back later."
-                    foreign_file.close()
+                    order = f_orders[active_team]
             # Good guys get their assignments here
             else:
                 order = get_next_order(CFBR_day(), CFBR_month(), username, current_stars)
                 existing_assignment = user_already_assigned(username, CFBR_day(), CFBR_month())
-
-                if order is None:
-                    order_msg = "Orders have not been loaded for today. Please check back later."
-                    order = ""
-                elif existing_assignment is not None: # Already got an assignment today.
-                    order_msg = "Your order is to attack/defend "
+                if existing_assignment is not None:  # Already got an assignment today.
                     order = existing_assignment
-                else: # Newly made assignment
-                    order_msg = "Your order is to attack/defend "
+                else:  # Newly made assignment
                     completed_file = f"{config['ROOT']}/files/{CFBR_day()}-{CFBR_month()}orders-completed.txt"
-                    completed_file = open(completed_file, "a")
-                    completed_file.write(username+","+order+","+str(current_stars)+"\n")
-                    completed_file.close()
-                    display_button = True
+                    with open(completed_file, "a") as completed_file:
+                        completed_file.write(f"{username},{order},{current_stars}\n")
 
-            log.write("SUCCESS,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+ ",Order: "+order_msg+order+"\n")
-            header1 = "Greetings, " + username
+            log.write(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order: {order}\n")
 
             try:
-                div1 = "I see you are a "+ str(current_stars) + " star. Thank you for your commitment."
-                div2 = "Today is " + hoy + ".  " +order_msg
-                if confirmation == 1:
-                    div1 = "Thank you for confirming your order. Good luck out there, soldier."
+                if confirmation:
                     log.write("SUCCESS,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+",Order confirmed! Yay.\n")
-
-                resp = make_response(render_template('index.html', title='What Are My Orders?', header=header1, div1=div1, div2=div2, order=order, display_button=display_button))
+                    resp = make_response(render_template('confirmation.html',
+                                                         username=username))
+                else:
+                    resp = make_response(render_template('order.html',
+                                                         username=username,
+                                                         current_stars=current_stars,
+                                                         hoy=hoy,
+                                                         order=order,
+                                                         confirm_url=config['CONFIRM_URL']))
                 resp.set_cookie('a', access_token.encode())
             except Exception as e:
-                div1 = "Go sign up for CFB Risk."
+                error = "Go sign up for CFB Risk."
                 log.write("ERROR,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+",Reddit user who doesn't play CFBR tried to log in\n")
                 log.write("  ERROR,unknown,Exception in get_next_order:"+str(e)+"\n")
-                resp = make_response(render_template('index.html', title='What Are My Orders?', header=header1, div1=div1))
+                resp = make_response(render_template('error.html', username=username,
+                                                     error_message=error,
+                                                     link="https://www.collegefootballrisk.com/"))
             return resp
 
 @app.route('/reddit_callback')
@@ -391,12 +378,8 @@ def total_turn_stars(total_turns):
 #
 ###############################################################
 def get_log_file():
-    try:
-        fname = f"{config['ROOT']}/files/log.txt"
-        fs = open(fname, "a")
-    except:
-        return "Well, this is a problem. Someone tell the admin that the log file is corrupted."
-
+    fname = f"{config['ROOT']}/files/log.txt"
+    fs = open(fname, "a")
     return fs
 
 ###############################################################
