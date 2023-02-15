@@ -1,4 +1,4 @@
-from flask import Flask, abort, request, make_response, redirect
+from flask import Flask, abort, request, make_response, redirect, g
 import requests
 import requests.auth
 from uuid import uuid4
@@ -9,6 +9,7 @@ import math
 import statistics
 from pytz import timezone
 from dotenv import dotenv_values
+import sqlite3
 
 app = Flask(__name__)
 config = dotenv_values('.env')
@@ -55,17 +56,8 @@ def homepage():
             display_button = False
             # Enemy rogue or SPY!!!! Just give them someone to attack.
             if active_team != config['THE_GOOD_GUYS']:
-                try:
-                    foreign_file = f"{config['ROOT']}/files/{CFBR_day()}-{CFBR_month()}foreign.txt"
-                    foreign_file = open(foreign_file, "r")
-                    f_orders = {}
-                    for f_order in foreign_file:
-                        f_orders[f_order.split(",")[0].strip()] = f_order.split(",")[1].strip()
-                    order_msg = "Your order is to attack/defend " + f_orders[active_team] + "."
-                    foreign_file.close()
-                except:
-                    order_msg = "Orders have not been loaded for today. Please check back later."
-                    foreign_file.close()
+                order_msg = "Your order is to attack/defend "
+                order = get_foreign_order(active_team, CFBR_day(), CFBR_month())
             # Good guys get their assignments here
             else:
                 order = get_next_order(CFBR_day(), CFBR_month(), username, current_stars)
@@ -77,12 +69,11 @@ def homepage():
                 elif existing_assignment is not None: # Already got an assignment today.
                     order_msg = "Your order is to attack/defend "
                     order = existing_assignment
+                    if confirmation != 1:
+                        display_button = True
                 else: # Newly made assignment
                     order_msg = "Your order is to attack/defend "
-                    completed_file = f"{config['ROOT']}/files/{CFBR_day()}-{CFBR_month()}orders-completed.txt"
-                    completed_file = open(completed_file, "a")
-                    completed_file.write(username+","+order+","+str(current_stars)+"\n")
-                    completed_file.close()
+                    write_new_order(username, order, current_stars)
                     display_button = True
 
             log.write("SUCCESS,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+ ",Order: "+order_msg+order+"\n")
@@ -93,9 +84,20 @@ def homepage():
                 div2 = "Today is " + hoy + ".  " +order_msg
                 if confirmation == 1:
                     div1 = "Thank you for confirming your order. Good luck out there, soldier."
+                    #TODO: If a user sits on the order-confirmation page for a long enough time, they could 
+                    # "confirm" yesterday's order but it'd be written as today's.  Fix this by updating the
+                    # query parameters to include the season/day
                     log.write("SUCCESS,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+",Order confirmed! Yay.\n")
+                    confirm_order(username)
 
-                resp = make_response(render_template('index.html', title='What Are My Orders?', header=header1, div1=div1, div2=div2, order=order, display_button=display_button))
+                resp = make_response(render_template('index.html', 
+                                                      title='What Are My Orders?', 
+                                                      header=header1, 
+                                                      div1=div1, 
+                                                      div2=div2, 
+                                                      order=order, 
+                                                      display_button=display_button,
+                                                      confirm_url=config['CONFIRM_URL']))
                 resp.set_cookie('a', access_token.encode())
             except Exception as e:
                 div1 = "Go sign up for CFB Risk."
@@ -130,58 +132,60 @@ def reddit_callback():
 
 def get_next_order(hoy_d, hoy_m, username, current_stars):
     log = get_log_file()
-    try:
-        # Get already assigned moves
-        assigned_orders = get_assigned_orders(hoy_d, hoy_m)
-
-        # Get the orders for this round and count tiers
-        round_orders = get_orders(hoy_d, hoy_m)
-        tiers = get_tiers(round_orders)
-
-        # For each tier, calculate denom and figure out lowest % complete,
-        # if tier 1 store floor, if lowest in tier below 100% then return,
-        # if lowest in tier above 100% and last tier then return floor
-        floor_terr = ""
-        for i in range(1, tiers+1):
-            lowest_score = 999999
-            lowest_terr = ""
-            for rorder in round_orders:
-                if int(round_orders[rorder][0]) == i:
-                    if rorder in assigned_orders:
-                        if int(assigned_orders[rorder]) / int(round_orders[rorder][1]) < lowest_score:
-                            lowest_score = int(assigned_orders[rorder]) / int(round_orders[rorder][1])
-                            lowest_terr = rorder
-                    else:
-                        lowest_score = 0
-                        lowest_terr = rorder
-
-            if i == 1:
-                floor_terr = lowest_terr
-
-            if lowest_score < 1:
-                return lowest_terr
-
-            if (i == tiers) and (lowest_score >= 1):
-                return floor_terr
-    except Exception as e:
-        return None
-
-def get_orders(hoy_d, hoy_m):
-    order_file =f"{config['ROOT']}/files/{hoy_d}-{hoy_m}orders.txt"
-    try:
-        order_file = open(order_file, "r")
-    except:
-        return None
+    # Get already assigned moves
+    assigned_orders = get_assigned_orders(hoy_d, hoy_m)
 
     # Get the orders for this round and count tiers
-    round_orders = {}
-    for order in order_file:
-        round_territory = order.split(",")[0].strip()
-        round_tier = order.split(",")[1].strip()
-        round_stars = order.split(",")[2].strip()
+    round_orders = get_orders(hoy_d, hoy_m)
+    tiers = get_tiers(round_orders)
 
-        round_orders[round_territory] = [round_tier, round_stars]
-    order_file.close()
+    # For each tier, calculate denom and figure out lowest % complete,
+    # if tier 1 store floor, if lowest in tier below 100% then return,
+    # if lowest in tier above 100% and last tier then return floor
+    floor_terr = ""
+    for i in range(1, tiers+1):
+        lowest_score = 999999
+        lowest_terr = ""
+        for rorder in round_orders:
+            if int(round_orders[rorder][0]) == i:
+                if rorder in assigned_orders:
+                    if int(assigned_orders[rorder]) / int(round_orders[rorder][1]) < lowest_score:
+                        lowest_score = int(assigned_orders[rorder]) / int(round_orders[rorder][1])
+                        lowest_terr = rorder
+                else:
+                    lowest_score = 0
+                    lowest_terr = rorder
+
+        if i == 1:
+            floor_terr = lowest_terr
+
+        if lowest_score < 1:
+            return lowest_terr
+
+        if (i == tiers) and (lowest_score >= 1):
+            return floor_terr
+
+def get_orders(hoy_d, hoy_m):
+    query = '''
+        SELECT
+            t.name,
+            p.tier,
+            p.quota
+        FROM plans p
+            INNER JOIN territory t on p.territory=t.id
+        WHERE
+            season=?
+            AND day=?
+        ORDER BY 
+            p.tier ASC, 
+            p.quota DESC
+    '''
+    res = get_db().execute(query, (hoy_m, hoy_d))
+    round_orders = {}
+    for row in res:
+        territory, tier, stars = row
+        round_orders[territory] = [tier, stars]
+    res.close()
     return round_orders
 
 def get_tiers(orders):
@@ -192,43 +196,86 @@ def get_tiers(orders):
     return tiers
 
 def get_assigned_orders(hoy_d, hoy_m):
-    # NB log isn't used in this function at the moment
-    log = get_log_file()
-    try:
-        completed_file =f"{config['ROOT']}/files/{hoy_d}-{hoy_m}orders-completed.txt"
-        completed_file = open(completed_file, "r")
-    except:
-        return None
-
-    # Get already assigned moves
-    territory_moves = {}
-    for complete in completed_file:
-        cmove_territory = complete.split(",")[1].strip()
-        cmove_stars = complete.split(",")[2].strip()
-
-        if cmove_territory in territory_moves:
-            territory_moves[cmove_territory] = str(int(cmove_stars) + int(territory_moves[cmove_territory]))
-        else:
-            territory_moves[cmove_territory] = cmove_stars
-    completed_file.close()
-
+    query = '''
+        SELECT 
+            t.name, 
+            SUM(o.stars) as stars
+        FROM orders o 
+            INNER JOIN territory t ON o.territory=t.id
+        WHERE 
+            season=?
+            AND day=?
+            AND accepted=TRUE
+        GROUP BY t.name
+        ORDER BY stars DESC
+        '''
+    res = get_db().execute(query, (hoy_m, hoy_d))
+    territory_moves = dict(res.fetchall())
+    res.close()
     return territory_moves
 
 def user_already_assigned(username, hoy_d, hoy_m):
-    try:
-        completed_file =f"{config['ROOT']}/{hoy_d}-{hoy_m}orders-completed.txt"
-        completed_file = open(completed_file, "r")
-    except:
-        return None
+    query = '''
+        SELECT
+            t.name
+        FROM orders o
+            INNER JOIN territory t ON o.territory=t.id
+        WHERE
+            user=?
+            AND season=?
+            AND day=?
+        LIMIT 1
+    '''
+    res = get_db().execute(query, (username, hoy_m, hoy_d))
+    cmove = res.fetchone()
+    res.close()
 
-    for complete in completed_file:
-        cmove_user = complete.split(",")[0].strip()
-        cmove_territory = complete.split(",")[1].strip()
+    return None if cmove == None else cmove[0]
 
-        if cmove_user == username:
-            return cmove_territory
-    completed_file.close()
-    return None
+def get_foreign_order(team, hoy_d, hoy_m):
+    query = '''
+        SELECT 
+            t.name, 
+            SUM(o.stars) as stars
+        FROM orders o 
+            INNER JOIN territory t ON o.territory=t.id
+        WHERE 
+            team=?
+            AND season=?
+            AND day=?
+        GROUP BY t.name
+        ORDER BY stars DESC
+    '''
+    res = get_db().execute(query, (team, hoy_m, hoy_d))
+    fmove = res.fetchone()
+    res.close()
+
+    # If all else fails, default to the most primal hate
+    return "Columbus" if fmove == None else fmove[0]
+
+def write_new_order(username, order, current_stars):
+    query = '''
+        INSERT INTO orders (season, day, user, territory, stars)
+        VALUES (?, ?, ?, 
+            (SELECT id FROM territory WHERE name=?),
+        ?)
+    '''
+    db = get_db()
+    db.execute(query, (CFBR_month(), CFBR_day(), username, order, current_stars))
+    db.commit()
+
+def confirm_order(username):
+    query = '''
+        UPDATE orders
+            SET accepted=TRUE
+        WHERE 
+            user=?
+            AND season=?
+            AND day=?
+    '''
+    db = get_db()
+    db.execute(query, (username, CFBR_month(), CFBR_day()))
+    db.commit()
 
 ###############################################################
 #
@@ -398,6 +445,23 @@ def get_log_file():
         return "Well, this is a problem. Someone tell the admin that the log file is corrupted."
 
     return fs
+
+###############################################################
+#
+# Database -- taken from https://flask.palletsprojects.com/en/2.2.x/patterns/sqlite3/
+#
+###############################################################
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(config['DB'])
+    return db
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
 
 ###############################################################
 #
