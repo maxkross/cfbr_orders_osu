@@ -147,10 +147,10 @@ def get_next_order(hoy_d, hoy_m, username, current_stars):
         lowest_score = 999999
         lowest_terr = ""
         for rorder in round_orders:
-            if int(round_orders[rorder][0]) == i:
+            if int(round_orders[rorder]['tiers']) == i:
                 if rorder in assigned_orders:
-                    if int(assigned_orders[rorder]) / int(round_orders[rorder][1]) < lowest_score:
-                        lowest_score = int(assigned_orders[rorder]) / int(round_orders[rorder][1])
+                    if int(assigned_orders[rorder]) / int(round_orders[rorder]['stars']) < lowest_score:
+                        lowest_score = int(assigned_orders[rorder]) / int(round_orders[rorder]['stars'])
                         lowest_terr = rorder
                 else:
                     lowest_score = 0
@@ -184,16 +184,15 @@ def get_orders(hoy_d, hoy_m):
     round_orders = {}
     for row in res:
         territory, tier, stars = row
-        round_orders[territory] = [tier, stars]
+        round_orders[territory] = {
+            'tier': tier, 
+            'stars': stars
+        }
     res.close()
     return round_orders
 
 def get_tiers(orders):
-    tiers = 0
-    for order in orders:
-        if int(orders[order][0]) > tiers:
-            tiers = int(orders[order][0])
-    return tiers
+    return max(x['tier'] for x in orders.values())
 
 def get_assigned_orders(hoy_d, hoy_m):
     query = '''

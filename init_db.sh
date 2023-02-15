@@ -51,6 +51,19 @@ CREATE TABLE IF NOT EXISTS orders (
         REFERENCES territory (id)
 );
 
+CREATE TABLE IF NOT EXISTS offers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season INTEGER,
+    day INTEGER,
+    user TEXT NOT NULL,
+    territory INTEGER,
+    stars INTEGER,
+    rank INTEGER,
+    FOREIGN KEY (territory)
+        REFERENCES territory (id)
+);
+CREATE UNIQUE INDEX offer_user_rank ON offers (season, day, user, rank);
+
 INSERT INTO region VALUES(0,"Unplaced");
 INSERT INTO region VALUES(1,"Pacific Northwest");
 INSERT INTO region VALUES(2,"Northern Lights");
