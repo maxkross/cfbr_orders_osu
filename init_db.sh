@@ -43,13 +43,14 @@ CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     season INTEGER,
     day INTEGER,
-    user TEXT NOT NULL UNIQUE,
+    user TEXT NOT NULL,
     territory INTEGER,
     stars INTEGER,
     accepted BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
+CREATE UNIQUE INDEX orders_for_day_and_user ON orders (season, day, user);
 
 CREATE TABLE IF NOT EXISTS offers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -273,6 +274,7 @@ INSERT INTO territory VALUES(200,"Montreal",3);
 INSERT INTO territory VALUES(201,"Montana",8);
 INSERT INTO territory VALUES(202,"Dakotas",8);
 INSERT INTO territory VALUES(203,"Vancouver",1);
+INSERT INTO territory VALUES(204,"Palo Alto",9);
 
 COMMIT;
 

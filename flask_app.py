@@ -84,18 +84,18 @@ def homepage():
                 div2 = "Today is " + hoy + ".  " +order_msg
                 if confirmation == 1:
                     div1 = "Thank you for confirming your order. Good luck out there, soldier."
-                    #TODO: If a user sits on the order-confirmation page for a long enough time, they could 
+                    #TODO: If a user sits on the order-confirmation page for a long enough time, they could
                     # "confirm" yesterday's order but it'd be written as today's.  Fix this by updating the
                     # query parameters to include the season/day
                     log.write("SUCCESS,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+",Order confirmed! Yay.\n")
                     confirm_order(username)
 
-                resp = make_response(render_template('index.html', 
-                                                      title='What Are My Orders?', 
-                                                      header=header1, 
-                                                      div1=div1, 
-                                                      div2=div2, 
-                                                      order=order, 
+                resp = make_response(render_template('index.html',
+                                                      title='What Are My Orders?',
+                                                      header=header1,
+                                                      div1=div1,
+                                                      div2=div2,
+                                                      order=order,
                                                       display_button=display_button,
                                                       confirm_url=config['CONFIRM_URL']))
                 resp.set_cookie('a', access_token.encode())
@@ -165,6 +165,33 @@ def get_next_order(hoy_d, hoy_m, username, current_stars):
         if (i == tiers) and (lowest_score >= 1):
             return floor_terr
 
+# Eventually this should return an array of orders, of length num_orders.  But first I need to confirm it works identically to the
+# original version of this method
+def get_next_orders_v2(hoy_d, hoy_m, num_orders=1):
+    # This is sorted by tier and then least-filled within the tier.
+    round_orders = get_orders_v2(hoy_d, hoy_m)
+    rv = []
+
+    # Now all we need to do is find the first 'x' sets of orders that aren't already complete, if they exist...
+    for candidate in round_orders:
+        if candidate['pct_complete'] < 1:
+            rv.append(candidate['territory'])
+        if len(rv) >= num_orders:
+            return rv
+
+    # ...and if they need more orders than we've already pulled, we'll just tell them to go with the Tier 1 targets with the
+    # lowest percentage completion (which will already be over 100%, since we got here in the first place)
+    for candidate in round_orders:
+        territory = candidate['territory']
+        if not territory in rv:
+            rv.append(territory)
+        if len(rv) >= num_orders:
+            return rv
+
+    # It's theoretically possible that we have less possible total orders than are requested; if we made it this far,
+    # return whatever we've got
+    return rv
+
 def get_orders(hoy_d, hoy_m):
     query = '''
         SELECT
@@ -176,32 +203,96 @@ def get_orders(hoy_d, hoy_m):
         WHERE
             season=?
             AND day=?
-        ORDER BY 
-            p.tier ASC, 
+        ORDER BY
+            p.tier ASC,
             p.quota DESC
     '''
     res = get_db().execute(query, (hoy_m, hoy_d))
     round_orders = {}
     for row in res:
         territory, tier, stars = row
-        round_orders[territory] = {
-            'tier': tier, 
-            'stars': stars
-        }
+        round_orders[territory] = [tier, stars]
     res.close()
     return round_orders
+
+def get_orders_v2(hoy_d, hoy_m):
+    query = '''
+        SELECT
+            name,
+            tier,
+            quota,
+            assigned,
+            pct_complete
+        FROM (
+            SELECT
+                t.name,
+                p.season,
+                p.day,
+                p.tier,
+                p.quota,
+                0 as assigned,
+                0 as pct_complete
+            FROM plans p
+                INNER JOIN territory t ON p.territory=t.id
+            WHERE
+                NOT EXISTS (SELECT * FROM orders o
+                                WHERE p.territory = o.territory
+                                    AND p.season=o.season
+                                    AND p.day=o.day
+                                    AND o.accepted=TRUE)
+            UNION ALL
+            SELECT
+                t.name,
+                p.season,
+                p.day,
+                p.tier,
+                p.quota,
+                SUM(o.stars) AS assigned,
+                stars / CAST(p.quota AS REAL) AS pct_complete
+            FROM plans p
+                INNER JOIN territory t ON p.territory=t.id
+                LEFT JOIN orders o ON (
+                    p.territory = o.territory
+                    AND p.season = o.season
+                    AND p.day = o.day
+                    )
+            WHERE
+                o.accepted=TRUE
+            GROUP BY
+                p.territory, p.season, p.day
+        )
+        WHERE
+            season = ?
+            AND day = ?
+        ORDER BY
+            tier ASC,
+            pct_complete ASC;
+    '''
+    res = get_db().execute(query, (hoy_m, hoy_d))
+    orders = []
+    for row in res:
+        territory, tier, quota, assigned, pct_complete = row
+        orders.push({
+            'territory': territory,
+            'tier': tier,
+            'quota': quota,
+            'assigned': assigned,
+            'pct_complete': pct_complete
+        })
+    res.close()
+    return orders
 
 def get_tiers(orders):
     return max(x['tier'] for x in orders.values())
 
 def get_assigned_orders(hoy_d, hoy_m):
     query = '''
-        SELECT 
-            t.name, 
+        SELECT
+            t.name,
             SUM(o.stars) as stars
-        FROM orders o 
+        FROM orders o
             INNER JOIN territory t ON o.territory=t.id
-        WHERE 
+        WHERE
             season=?
             AND day=?
             AND accepted=TRUE
@@ -233,12 +324,12 @@ def user_already_assigned(username, hoy_d, hoy_m):
 
 def get_foreign_order(team, hoy_d, hoy_m):
     query = '''
-        SELECT 
-            t.name, 
+        SELECT
+            t.name,
             SUM(o.stars) as stars
-        FROM orders o 
+        FROM orders o
             INNER JOIN territory t ON o.territory=t.id
-        WHERE 
+        WHERE
             team=?
             AND season=?
             AND day=?
@@ -255,7 +346,7 @@ def get_foreign_order(team, hoy_d, hoy_m):
 def write_new_order(username, order, current_stars):
     query = '''
         INSERT INTO orders (season, day, user, territory, stars)
-        VALUES (?, ?, ?, 
+        VALUES (?, ?, ?,
             (SELECT id FROM territory WHERE name=?),
         ?)
     '''
@@ -267,7 +358,7 @@ def confirm_order(username):
     query = '''
         UPDATE orders
             SET accepted=TRUE
-        WHERE 
+        WHERE
             user=?
             AND season=?
             AND day=?
