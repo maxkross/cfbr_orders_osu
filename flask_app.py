@@ -69,6 +69,8 @@ def homepage():
                 elif existing_assignment is not None: # Already got an assignment today.
                     order_msg = "Your order is to attack/defend "
                     order = existing_assignment
+                    if confirmation != 1:
+                        display_button = True
                 else: # Newly made assignment
                     order_msg = "Your order is to attack/defend "
                     write_new_order(username, order, current_stars)
@@ -82,9 +84,20 @@ def homepage():
                 div2 = "Today is " + hoy + ".  " +order_msg
                 if confirmation == 1:
                     div1 = "Thank you for confirming your order. Good luck out there, soldier."
+                    #TODO: If a user sits on the order-confirmation page for a long enough time, they could 
+                    # "confirm" yesterday's order but it'd be written as today's.  Fix this by updating the
+                    # query parameters to include the season/day
                     log.write("SUCCESS,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+",Order confirmed! Yay.\n")
+                    confirm_order(username)
 
-                resp = make_response(render_template('index.html', title='What Are My Orders?', header=header1, div1=div1, div2=div2, order=order, display_button=display_button))
+                resp = make_response(render_template('index.html', 
+                                                      title='What Are My Orders?', 
+                                                      header=header1, 
+                                                      div1=div1, 
+                                                      div2=div2, 
+                                                      order=order, 
+                                                      display_button=display_button,
+                                                      confirm_url=config['CONFIRM_URL']))
                 resp.set_cookie('a', access_token.encode())
             except Exception as e:
                 div1 = "Go sign up for CFB Risk."
@@ -192,6 +205,7 @@ def get_assigned_orders(hoy_d, hoy_m):
         WHERE 
             season=?
             AND day=?
+            AND accepted=TRUE
         GROUP BY t.name
         ORDER BY stars DESC
         '''
@@ -248,6 +262,19 @@ def write_new_order(username, order, current_stars):
     '''
     db = get_db()
     db.execute(query, (CFBR_month(), CFBR_day(), username, order, current_stars))
+    db.commit()
+
+def confirm_order(username):
+    query = '''
+        UPDATE orders
+            SET accepted=TRUE
+        WHERE 
+            user=?
+            AND season=?
+            AND day=?
+    '''
+    db = get_db()
+    db.execute(query, (username, CFBR_month(), CFBR_day()))
     db.commit()
 
 ###############################################################
