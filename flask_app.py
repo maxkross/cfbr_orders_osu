@@ -242,7 +242,9 @@ def get_foreign_order(team, hoy_d, hoy_m):
 def write_new_order(username, order, current_stars):
     query = '''
         INSERT INTO orders (season, day, user, territory, stars)
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, 
+            (SELECT id FROM territory WHERE name=?),
+        ?)
     '''
     db = get_db()
     db.execute(query, (CFBR_month(), CFBR_day(), username, order, current_stars))
