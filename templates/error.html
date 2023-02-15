@@ -1,0 +1,9 @@
+{% extends 'index.html' %}
+
+{% block title %} Error {% endblock %}
+
+{% block body %}
+<h2>Greetings, {{ username }}</h2>
+<div style="padding=20px">{{ error_message }}</div>
+<div style="padding=20px"><a href='{{ link }}'>{{ link }}</a></div>
+{% endblock %}

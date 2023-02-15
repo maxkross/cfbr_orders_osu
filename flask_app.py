@@ -1,10 +1,9 @@
-from flask import Flask, abort, request, make_response, redirect, g
+from flask import Flask, abort, request, make_response, redirect, g, render_template
 import requests
 import requests.auth
 from uuid import uuid4
 import urllib
 from datetime import datetime, timedelta
-from flask import render_template
 import math
 import statistics
 from pytz import timezone
@@ -23,24 +22,21 @@ config = dotenv_values('.env')
 @app.route('/')
 def homepage():
     access_token = request.cookies.get('a')
-    confirmation = request.args.get('confirmed', default = 0, type = int)
+    confirmation = request.args.get('confirmed', default=0, type=int)
 
     log = get_log_file()
 
-    if (access_token == None):
-        header1 = "Welcome to Central Command!"
+    if access_token is None:
         link = make_authorization_url()
-
-        resp = make_response(render_template('auth.html', title='What Are My Orders?', header=header1, authlink=link))
+        resp = make_response(render_template('auth.html', authlink=link))
         return resp
     else:
         headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
         response = requests.get(config['REDDIT_ACCOUNT_URI'], headers=headers)
-        if (response.status_code == 401):
-            log.write("Error,"+access_token+",401 Error from CFBR API\n" )
-            header1 = "Welcome to Central Command!"
+        if response.status_code == 401:
+            log.write(f"Error,{access_token},401 Error from CFBR API\n")
             link = make_authorization_url()
-            resp = make_response(render_template('auth.html', title='What Are My Orders?', header=header1, authlink=link))
+            resp = make_response(render_template('auth.html', authlink=link))
             return resp
         else:
             # Let's get the basics
@@ -52,8 +48,7 @@ def homepage():
             active_team = response.json()['active_team']['name']
             current_stars = response.json()['ratings']['overall']
 
-            order_msg = ""
-            display_button = False
+            order = ""
             # Enemy rogue or SPY!!!! Just give them someone to attack.
             if active_team != config['THE_GOOD_GUYS']:
                 order_msg = "Your order is to attack/defend "
@@ -62,12 +57,7 @@ def homepage():
             else:
                 order = get_next_order(CFBR_day(), CFBR_month(), username, current_stars)
                 existing_assignment = user_already_assigned(username, CFBR_day(), CFBR_month())
-
-                if order is None:
-                    order_msg = "Orders have not been loaded for today. Please check back later."
-                    order = ""
-                elif existing_assignment is not None: # Already got an assignment today.
-                    order_msg = "Your order is to attack/defend "
+                if existing_assignment is not None:  # Already got an assignment today.
                     order = existing_assignment
                     if confirmation != 1:
                         display_button = True
@@ -76,34 +66,32 @@ def homepage():
                     write_new_order(username, order, current_stars)
                     display_button = True
 
-            log.write("SUCCESS,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+ ",Order: "+order_msg+order+"\n")
-            header1 = "Greetings, " + username
+            log.write(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order: {order}\n")
 
             try:
-                div1 = "I see you are a "+ str(current_stars) + " star. Thank you for your commitment."
-                div2 = "Today is " + hoy + ".  " +order_msg
-                if confirmation == 1:
-                    div1 = "Thank you for confirming your order. Good luck out there, soldier."
-                    #TODO: If a user sits on the order-confirmation page for a long enough time, they could 
+                if confirmation:
+                    #TODO: If a user sits on the order-confirmation page for a long enough time, they could
                     # "confirm" yesterday's order but it'd be written as today's.  Fix this by updating the
                     # query parameters to include the season/day
                     log.write("SUCCESS,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+",Order confirmed! Yay.\n")
                     confirm_order(username)
-
-                resp = make_response(render_template('index.html', 
-                                                      title='What Are My Orders?', 
-                                                      header=header1, 
-                                                      div1=div1, 
-                                                      div2=div2, 
-                                                      order=order, 
-                                                      display_button=display_button,
-                                                      confirm_url=config['CONFIRM_URL']))
+                    resp = make_response(render_template('confirmation.html',
+                                                         username=username))
+                else:
+                    resp = make_response(render_template('order.html',
+                                                         username=username,
+                                                         current_stars=current_stars,
+                                                         hoy=hoy,
+                                                         order=order,
+                                                         confirm_url=config['CONFIRM_URL']))
                 resp.set_cookie('a', access_token.encode())
             except Exception as e:
-                div1 = "Go sign up for CFB Risk."
+                error = "Go sign up for CFB Risk."
                 log.write("ERROR,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+",Reddit user who doesn't play CFBR tried to log in\n")
                 log.write("  ERROR,unknown,Exception in get_next_order:"+str(e)+"\n")
-                resp = make_response(render_template('index.html', title='What Are My Orders?', header=header1, div1=div1))
+                resp = make_response(render_template('error.html', username=username,
+                                                     error_message=error,
+                                                     link="https://www.collegefootballrisk.com/"))
             return resp
 
 @app.route('/reddit_callback')
@@ -176,8 +164,8 @@ def get_orders(hoy_d, hoy_m):
         WHERE
             season=?
             AND day=?
-        ORDER BY 
-            p.tier ASC, 
+        ORDER BY
+            p.tier ASC,
             p.quota DESC
     '''
     res = get_db().execute(query, (hoy_m, hoy_d))
@@ -197,12 +185,12 @@ def get_tiers(orders):
 
 def get_assigned_orders(hoy_d, hoy_m):
     query = '''
-        SELECT 
-            t.name, 
+        SELECT
+            t.name,
             SUM(o.stars) as stars
-        FROM orders o 
+        FROM orders o
             INNER JOIN territory t ON o.territory=t.id
-        WHERE 
+        WHERE
             season=?
             AND day=?
             AND accepted=TRUE
@@ -234,12 +222,12 @@ def user_already_assigned(username, hoy_d, hoy_m):
 
 def get_foreign_order(team, hoy_d, hoy_m):
     query = '''
-        SELECT 
-            t.name, 
+        SELECT
+            t.name,
             SUM(o.stars) as stars
-        FROM orders o 
+        FROM orders o
             INNER JOIN territory t ON o.territory=t.id
-        WHERE 
+        WHERE
             team=?
             AND season=?
             AND day=?
@@ -256,7 +244,7 @@ def get_foreign_order(team, hoy_d, hoy_m):
 def write_new_order(username, order, current_stars):
     query = '''
         INSERT INTO orders (season, day, user, territory, stars)
-        VALUES (?, ?, ?, 
+        VALUES (?, ?, ?,
             (SELECT id FROM territory WHERE name=?),
         ?)
     '''
@@ -268,7 +256,7 @@ def confirm_order(username):
     query = '''
         UPDATE orders
             SET accepted=TRUE
-        WHERE 
+        WHERE
             user=?
             AND season=?
             AND day=?
@@ -438,12 +426,8 @@ def total_turn_stars(total_turns):
 #
 ###############################################################
 def get_log_file():
-    try:
-        fname = f"{config['ROOT']}/files/log.txt"
-        fs = open(fname, "a")
-    except:
-        return "Well, this is a problem. Someone tell the admin that the log file is corrupted."
-
+    fname = f"{config['ROOT']}/files/log.txt"
+    fs = open(fname, "a")
     return fs
 
 ###############################################################
