@@ -43,12 +43,13 @@ CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     season INTEGER,
     day INTEGER,
-    user TEXT NOT NULL UNIQUE,
+    user TEXT NOT NULL,
     territory INTEGER,
     stars INTEGER,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
+CREATE UNIQUE INDEX orders_for_day_and_user ON orders (season, day, user);
 
 INSERT INTO region VALUES(0,"Unplaced");
 INSERT INTO region VALUES(1,"Pacific Northwest");
