@@ -93,7 +93,7 @@ def homepage():
             return resp
 
 
-@app.route('/reddit_callback')
+@app.route(REDDIT_CALLBACK_ROUTE)
 def reddit_callback():
     error = request.args.get('error', '')
     if error:
