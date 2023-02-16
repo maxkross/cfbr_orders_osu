@@ -1,19 +1,12 @@
 <html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <head>
-        <title>{{ title }}</title>
+        <title>{% block title %} {% endblock %} - What Are My Orders?</title>
     </head>
-    <body>
-        <img src="{{url_for('static', filename='cfbr_wamo.png')}}"
-        </br></br>
-        <h2>{{ header }}</h2>
-        <div style="padding=20px">{{ div1 }}</div></br>
-        <div style="padding=20px">{{ div2 }}<b>{{ order }}</b></b></div></br>
-        </br>
-        {% if display_button: %}
-            <button onclick="window.location.href='http://www.whataremyorders.com/?confirmed=1';">
-                Accept Orders
-            </button>
-        {% endif %}
+    <body style="text-align: center; width: 100%; margin: 0px">
+        <img src="{{url_for('static', filename='cfbr_wamo.png')}}">
+        <br><br>
+        {% block body %}
+        {% endblock %}
     </body>
 </html>

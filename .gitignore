@@ -4,3 +4,6 @@ venv*/*
 .env
 log.txt
 *.swp
+**/*.db
+
+__pycache__
