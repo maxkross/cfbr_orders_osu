@@ -46,6 +46,7 @@ def homepage():
             # Let's get this user's CFBR info
             response = requests.get(f"{config['CFBR_REST_API']}/player?player={username}")
             active_team = response.json()['active_team']['name']
+            total_turns = response.json()['stats']['totalTurns']
             current_stars = response.json()['ratings']['overall']
 
             order = ""
@@ -79,6 +80,7 @@ def homepage():
                     resp = make_response(render_template('order.html',
                                                          username=username,
                                                          current_stars=current_stars,
+                                                         total_turns=total_turns,
                                                          hoy=hoy,
                                                          order=order,
                                                          confirm_url=config['CONFIRM_URL']))
