@@ -4,8 +4,6 @@ import requests.auth
 from uuid import uuid4
 import urllib
 from datetime import datetime, timedelta
-import math
-import statistics
 from pytz import timezone
 import sqlite3
 
@@ -352,90 +350,6 @@ def get_username(access_token):
     response = requests.get(REDDIT_ACCOUNT_URI, headers=headers)
     me_json = response.json()
     return me_json['name']
-
-###############################################################
-#
-# Functions for star calcs
-#
-###############################################################
-
-
-def days_to_next_star(turns, current_stars, total_turns, game_turns, mvps, streak):
-    if current_stars == 5:
-        return -1
-    turns = turns+1
-    total_turns = total_turns + 1
-    game_turns = game_turns + 1
-    streak = streak + 1
-    if current_stars < count_stars(total_turns, game_turns, mvps, streak):
-        return turns
-    else:
-        return days_to_next_star(turns, current_stars, total_turns, game_turns, mvps, streak)
-
-
-# Function to count stars based on stats
-def count_stars(total_turns, game_turns, mvps, streak):
-    star1 = total_turn_stars(total_turns)
-    star2 = game_turn_stars(game_turns)
-    star3 = mvp_stars(mvps)
-    star4 = streak_stars(streak)
-    return math.ceil(statistics.median([star1, star2, star3, star4]))
-
-
-# Count star level of streaks stat
-def streak_stars(streak):
-    stars = 1
-    if streak > 24:
-        stars = 5
-    elif streak > 9:
-        stars = 4
-    elif streak > 4:
-        stars = 3
-    elif streak > 2:
-        stars = 2
-    return stars
-
-
-# Count star level of mvps stat
-def mvp_stars(mvps):
-    stars = 1
-    if mvps > 24:
-        stars = 5
-    elif mvps > 9:
-        stars = 4
-    elif mvps > 4:
-        stars = 3
-    elif mvps > 0:
-        stars = 2
-    return stars
-
-
-# Count star level of game turns stat
-def game_turn_stars(game_turns):
-    stars = 1
-    if game_turns > 39:
-        stars = 5
-    elif game_turns > 24:
-        stars = 4
-    elif game_turns > 9:
-        stars = 3
-    elif game_turns > 4:
-        stars = 2
-    return stars
-
-
-# Count star level of total turns stat
-def total_turn_stars(total_turns):
-    stars = 1
-    if total_turns > 99:
-        stars = 5
-    elif total_turns > 49:
-        stars = 4
-    elif total_turns > 24:
-        stars = 3
-    elif total_turns > 9:
-        stars = 2
-    return stars
 
 ###############################################################
 #
