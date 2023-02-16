@@ -60,9 +60,13 @@ def homepage():
                 else: # Newly made assignment
                     # Step one of getting to multi-order -- just pull the first value off the response
                     order = get_next_orders(CFBR_day(), CFBR_month())[0]
-                    write_new_order(username, order, current_stars)
+                    if order is not None:
+                        write_new_order(username, order, current_stars)
 
-            log.write(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order: {order}\n")
+            if order is not None:
+                log.write(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order: {order}\n")
+            else:
+                log.write(f"NO ORDER,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}")
 
             try:
                 if confirmation:
