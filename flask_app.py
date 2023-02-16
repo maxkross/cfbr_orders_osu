@@ -51,7 +51,6 @@ def homepage():
             order = ""
             # Enemy rogue or SPY!!!! Just give them someone to attack.
             if active_team != config['THE_GOOD_GUYS']:
-                order_msg = "Your order is to attack/defend "
                 order = get_foreign_order(active_team, CFBR_day(), CFBR_month())
             # Good guys get their assignments here
             else:
@@ -59,14 +58,13 @@ def homepage():
                 existing_assignment = user_already_assigned(username, CFBR_day(), CFBR_month())
                 if existing_assignment is not None:  # Already got an assignment today.
                     order = existing_assignment
-                    if confirmation != 1:
-                        display_button = True
-                else: # Newly made assignment
-                    order_msg = "Your order is to attack/defend "
+                elif order is not None: # Newly made assignment
                     write_new_order(username, order, current_stars)
-                    display_button = True
 
-            log.write(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order: {order}\n")
+            if order is not None:
+                log.write(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order: {order}\n")
+            else:
+                log.write(f"NO ORDER,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}")
 
             try:
                 if confirmation:

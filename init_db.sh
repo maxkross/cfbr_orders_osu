@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS enemy_plans (
     season INTEGER,
     day INTEGER,
     team TEXT NOT NULL UNIQUE,
-    territory INTEGER,
+    territory INTEGER NOT NULL,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
