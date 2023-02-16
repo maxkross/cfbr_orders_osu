@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS enemy_plans (
     season INTEGER,
     day INTEGER,
     team TEXT NOT NULL UNIQUE,
-    territory INTEGER,
+    territory INTEGER NOT NULL,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS orders (
     season INTEGER,
     day INTEGER,
     user TEXT NOT NULL,
-    territory INTEGER,
+    territory INTEGER NOT NULL,
     stars INTEGER,
     accepted BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (territory)
