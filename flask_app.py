@@ -7,11 +7,10 @@ from datetime import datetime, timedelta
 import math
 import statistics
 from pytz import timezone
-from dotenv import dotenv_values
 import sqlite3
+from constants import *
 
 app = Flask(__name__)
-config = dotenv_values('.env')
 
 ###############################################################
 #
@@ -32,7 +31,7 @@ def homepage():
         return resp
     else:
         headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
-        response = requests.get(config['REDDIT_ACCOUNT_URI'], headers=headers)
+        response = requests.get(REDDIT_ACCOUNT_URI, headers=headers)
         if response.status_code == 401:
             log.write(f"Error,{access_token},401 Error from CFBR API\n")
             link = make_authorization_url()
@@ -44,13 +43,13 @@ def homepage():
             hoy = what_day_is_it()
 
             # Let's get this user's CFBR info
-            response = requests.get(f"{config['CFBR_REST_API']}/player?player={username}")
+            response = requests.get(f"{CFBR_REST_API}/player?player={username}")
             active_team = response.json()['active_team']['name']
             current_stars = response.json()['ratings']['overall']
 
             order = ""
             # Enemy rogue or SPY!!!! Just give them someone to attack.
-            if active_team != config['THE_GOOD_GUYS']:
+            if active_team != THE_GOOD_GUYS:
                 order = get_foreign_order(active_team, CFBR_day(), CFBR_month())
             # Good guys get their assignments here
             else:
@@ -81,7 +80,7 @@ def homepage():
                                                          current_stars=current_stars,
                                                          hoy=hoy,
                                                          order=order,
-                                                         confirm_url=config['CONFIRM_URL']))
+                                                         confirm_url=CONFIRM_URL))
                 resp.set_cookie('a', access_token.encode())
             except Exception as e:
                 error = "Go sign up for CFB Risk."
@@ -309,13 +308,13 @@ def what_day_is_it():
 def make_authorization_url():
     state = str(uuid4())
     save_created_state(state)
-    params = {"client_id": config['REDDIT_CLIENT_ID'],
+    params = {"client_id": REDDIT_CLIENT_ID,
               "response_type": "code",
               "state": state,
-              "redirect_uri": config['REDIRECT_URI'],
+              "redirect_uri": REDIRECT_URI,
               "duration": "temporary",
               "scope": "identity"}
-    url = f"{config['REDDIT_AUTH_URI']}?{urllib.parse.urlencode(params)}"
+    url = f"{REDDIT_AUTH_URI}?{urllib.parse.urlencode(params)}"
     return url
 
 def save_created_state(state):
@@ -324,11 +323,11 @@ def is_valid_state(state):
     return True
 
 def get_token(code):
-    client_auth = requests.auth.HTTPBasicAuth(config['REDDIT_CLIENT_ID'], config['REDDIT_CLIENT_SECRET'])
+    client_auth = requests.auth.HTTPBasicAuth(REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET)
     post_data = {"grant_type": "authorization_code",
                  "code": code,
-                 "redirect_uri": config['REDIRECT_URI']}
-    response = requests.post(config['REDDIT_TOKEN_URI'],
+                 "redirect_uri": REDIRECT_URI}
+    response = requests.post(REDDIT_TOKEN_URI,
                              auth=client_auth,
                              headers = {'User-agent': 'CFB Risk Orders'},
                              data=post_data)
@@ -337,7 +336,7 @@ def get_token(code):
 
 def get_username(access_token):
     headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
-    response = requests.get(config['REDDIT_ACCOUNT_URI'], headers=headers)
+    response = requests.get(REDDIT_ACCOUNT_URI, headers=headers)
     me_json = response.json()
     return me_json['name']
 
@@ -424,8 +423,7 @@ def total_turn_stars(total_turns):
 #
 ###############################################################
 def get_log_file():
-    fname = f"{config['ROOT']}/files/log.txt"
-    fs = open(fname, "a")
+    fs = open(LOG_FILE, "a")
     return fs
 
 ###############################################################
@@ -436,7 +434,7 @@ def get_log_file():
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = sqlite3.connect(config['DB'])
+        db = g._database = sqlite3.connect(DB)
     return db
 
 @app.teardown_appcontext
@@ -452,4 +450,4 @@ def close_connection(exception):
 ###############################################################
 
 if __name__ == '__main__':
-    app.run(debug=True, port=config['HTTP_PORT'])
+    app.run(debug=True, port=HTTP_PORT)
