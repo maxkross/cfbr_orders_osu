@@ -8,7 +8,9 @@ import math
 import statistics
 from pytz import timezone
 import sqlite3
+
 from constants import *
+from logger import Logger
 
 app = Flask(__name__)
 
@@ -24,8 +26,6 @@ def homepage():
     access_token = request.cookies.get('a')
     confirmation = request.args.get('confirmed', default=0, type=int)
 
-    log = get_log_file()
-
     if access_token is None:
         link = make_authorization_url()
         resp = make_response(render_template('auth.html', authlink=link))
@@ -34,7 +34,7 @@ def homepage():
         headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
         response = requests.get(REDDIT_ACCOUNT_URI, headers=headers)
         if response.status_code == 401:
-            log.write(f"Error,{access_token},401 Error from CFBR API\n")
+            Logger.log(f"Error,{access_token},401 Error from CFBR API")
             link = make_authorization_url()
             resp = make_response(render_template('auth.html', authlink=link))
             return resp
@@ -62,16 +62,16 @@ def homepage():
                     write_new_order(username, order, current_stars)
 
             if order is not None:
-                log.write(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order: {order}\n")
+                Logger.log(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order: {order}")
             else:
-                log.write(f"NO ORDER,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}")
+                Logger.log(f"NO ORDER,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}")
 
             try:
                 if confirmation:
                     # TODO: If a user sits on the order-confirmation page for a long enough time, they could
                     # "confirm" yesterday's order but it'd be written as today's.  Fix this by updating the
                     # query parameters to include the season/day
-                    log.write(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order confirmed! Yay.\n")
+                    Logger.log(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order confirmed! Yay.")
                     confirm_order(username)
                     resp = make_response(render_template('confirmation.html',
                                                          username=username))
@@ -85,8 +85,8 @@ def homepage():
                 resp.set_cookie('a', access_token.encode())
             except Exception as e:
                 error = "Go sign up for CFB Risk."
-                log.write(f"ERROR,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Reddit user who doesn't play CFBR tried to log in\n")
-                log.write(f"  ERROR,unknown,Exception in get_next_order:{e}\n")
+                Logger.log(f"ERROR,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Reddit user who doesn't play CFBR tried to log in")
+                Logger.log(f"  ERROR,unknown,Exception in get_next_order:{e}")
                 resp = make_response(render_template('error.html', username=username,
                                                      error_message=error,
                                                      link="https://www.collegefootballrisk.com/"))
@@ -101,8 +101,7 @@ def reddit_callback():
     state = request.args.get('state', '')
     if not is_valid_state(state):
         # Uh-oh, this request wasn't started by us!
-        log = get_log_file()
-        log.write(f"ERROR,,{CFBR_day()}-{CFBR_month()},{what_day_is_it()}unknown,403 from Reddit Auth API. WTF bro.\n")
+        Logger.log(f"ERROR,,{CFBR_day()}-{CFBR_month()},{what_day_is_it()}unknown,403 from Reddit Auth API. WTF bro.")
         abort(403)
     code = request.args.get('code')
     access_token = get_token(code)
@@ -437,17 +436,6 @@ def total_turn_stars(total_turns):
     elif total_turns > 9:
         stars = 2
     return stars
-
-###############################################################
-#
-# Filenames
-#
-###############################################################
-
-
-def get_log_file():
-    fs = open(LOG_FILE, "a")
-    return fs
 
 ###############################################################
 #
