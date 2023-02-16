@@ -18,6 +18,7 @@ app = Flask(__name__)
 #
 ###############################################################
 
+
 @app.route('/')
 def homepage():
     access_token = request.cookies.get('a')
@@ -53,11 +54,11 @@ def homepage():
                 order = get_foreign_order(active_team, CFBR_day(), CFBR_month())
             # Good guys get their assignments here
             else:
-                order = get_next_order(CFBR_day(), CFBR_month(), username, current_stars)
+                order = get_next_order(CFBR_day(), CFBR_month())
                 existing_assignment = user_already_assigned(username, CFBR_day(), CFBR_month())
                 if existing_assignment is not None:  # Already got an assignment today.
                     order = existing_assignment
-                elif order is not None: # Newly made assignment
+                elif order is not None:  # Newly made assignment
                     write_new_order(username, order, current_stars)
 
             if order is not None:
@@ -67,10 +68,10 @@ def homepage():
 
             try:
                 if confirmation:
-                    #TODO: If a user sits on the order-confirmation page for a long enough time, they could
+                    # TODO: If a user sits on the order-confirmation page for a long enough time, they could
                     # "confirm" yesterday's order but it'd be written as today's.  Fix this by updating the
                     # query parameters to include the season/day
-                    log.write("SUCCESS,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+",Order confirmed! Yay.\n")
+                    log.write(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order confirmed! Yay.\n")
                     confirm_order(username)
                     resp = make_response(render_template('confirmation.html',
                                                          username=username))
@@ -84,12 +85,13 @@ def homepage():
                 resp.set_cookie('a', access_token.encode())
             except Exception as e:
                 error = "Go sign up for CFB Risk."
-                log.write("ERROR,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+",Reddit user who doesn't play CFBR tried to log in\n")
-                log.write("  ERROR,unknown,Exception in get_next_order:"+str(e)+"\n")
+                log.write(f"ERROR,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Reddit user who doesn't play CFBR tried to log in\n")
+                log.write(f"  ERROR,unknown,Exception in get_next_order:{e}\n")
                 resp = make_response(render_template('error.html', username=username,
                                                      error_message=error,
                                                      link="https://www.collegefootballrisk.com/"))
             return resp
+
 
 @app.route('/reddit_callback')
 def reddit_callback():
@@ -100,7 +102,7 @@ def reddit_callback():
     if not is_valid_state(state):
         # Uh-oh, this request wasn't started by us!
         log = get_log_file()
-        log.write("ERROR,"+","+CFBR_day()+"-"+CFBR_month()+","+what_day_is_it()+"unknown,403 from Reddit Auth API. WTF bro.\n")
+        log.write(f"ERROR,,{CFBR_day()}-{CFBR_month()},{what_day_is_it()}unknown,403 from Reddit Auth API. WTF bro.\n")
         abort(403)
     code = request.args.get('code')
     access_token = get_token(code)
@@ -115,8 +117,8 @@ def reddit_callback():
 #
 ###############################################################
 
-def get_next_order(hoy_d, hoy_m, username, current_stars):
-    log = get_log_file()
+
+def get_next_order(hoy_d, hoy_m):
     # Get already assigned moves
     assigned_orders = get_assigned_orders(hoy_d, hoy_m)
 
@@ -150,6 +152,7 @@ def get_next_order(hoy_d, hoy_m, username, current_stars):
         if (i == tiers) and (lowest_score >= 1):
             return floor_terr
 
+
 def get_orders(hoy_d, hoy_m):
     query = '''
         SELECT
@@ -173,12 +176,14 @@ def get_orders(hoy_d, hoy_m):
     res.close()
     return round_orders
 
+
 def get_tiers(orders):
     tiers = 0
     for order in orders:
         if int(orders[order][0]) > tiers:
             tiers = int(orders[order][0])
     return tiers
+
 
 def get_assigned_orders(hoy_d, hoy_m):
     query = '''
@@ -199,6 +204,7 @@ def get_assigned_orders(hoy_d, hoy_m):
     res.close()
     return territory_moves
 
+
 def user_already_assigned(username, hoy_d, hoy_m):
     query = '''
         SELECT
@@ -215,7 +221,8 @@ def user_already_assigned(username, hoy_d, hoy_m):
     cmove = res.fetchone()
     res.close()
 
-    return None if cmove == None else cmove[0]
+    return None if cmove is None else cmove[0]
+
 
 def get_foreign_order(team, hoy_d, hoy_m):
     query = '''
@@ -236,7 +243,8 @@ def get_foreign_order(team, hoy_d, hoy_m):
     res.close()
 
     # If all else fails, default to the most primal hate
-    return "Columbus" if fmove == None else fmove[0]
+    return "Columbus" if fmove is None else fmove[0]
+
 
 def write_new_order(username, order, current_stars):
     query = '''
@@ -248,6 +256,7 @@ def write_new_order(username, order, current_stars):
     db = get_db()
     db.execute(query, (CFBR_month(), CFBR_day(), username, order, current_stars))
     db.commit()
+
 
 def confirm_order(username):
     query = '''
@@ -268,42 +277,42 @@ def confirm_order(username):
 #
 ###############################################################
 
+
 def CFBR_month():
     tz = timezone('EST')
     today = datetime.now(tz)
     hour = int(today.strftime("%H"))
-    min = int(today.strftime("%M"))
-
-    if ((hour == 23) or ((hour == 22) and (min >29))):
-        today = datetime.now(tz) + timedelta(days = 1)
+    minute = int(today.strftime("%M"))
+    if (hour == 23) or ((hour == 22) and (minute > 29)):
+        today = datetime.now(tz) + timedelta(days=1)
     if today.strftime("%A") == "Sunday":
-        today = today + timedelta(days = 1)
-
+        today = today + timedelta(days=1)
     return today.strftime("%-m")
+
 
 def CFBR_day():
     tz = timezone('EST')
     today = datetime.now(tz)
     hour = int(today.strftime("%H"))
-    min = int(today.strftime("%M"))
-
-    if ((hour == 23) or ((hour == 22) and (min >29))):
-        today = datetime.now(tz) + timedelta(days = 1)
+    minute = int(today.strftime("%M"))
+    if (hour == 23) or ((hour == 22) and (minute > 29)):
+        today = datetime.now(tz) + timedelta(days=1)
     if today.strftime("%A") == "Sunday":
-        today = today + timedelta(days = 1)
-
+        today = today + timedelta(days=1)
     return today.strftime("%-d")
+
 
 # Pretty date, for the user so not CFBR
 def what_day_is_it():
     tz = timezone('EST')
-    return(datetime.now(tz).strftime("%B %d, %Y"))
+    return datetime.now(tz).strftime("%B %d, %Y")
 
 ###############################################################
 #
 # Reddit API helper functions
 #
 ###############################################################
+
 
 def make_authorization_url():
     state = str(uuid4())
@@ -317,10 +326,14 @@ def make_authorization_url():
     url = f"{REDDIT_AUTH_URI}?{urllib.parse.urlencode(params)}"
     return url
 
+
 def save_created_state(state):
     pass
+
+
 def is_valid_state(state):
     return True
+
 
 def get_token(code):
     client_auth = requests.auth.HTTPBasicAuth(REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET)
@@ -329,10 +342,11 @@ def get_token(code):
                  "redirect_uri": REDIRECT_URI}
     response = requests.post(REDDIT_TOKEN_URI,
                              auth=client_auth,
-                             headers = {'User-agent': 'CFB Risk Orders'},
+                             headers={'User-agent': 'CFB Risk Orders'},
                              data=post_data)
     token_json = response.json()
     return token_json['access_token']
+
 
 def get_username(access_token):
     headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
@@ -345,17 +359,20 @@ def get_username(access_token):
 # Functions for star calcs
 #
 ###############################################################
+
+
 def days_to_next_star(turns, current_stars, total_turns, game_turns, mvps, streak):
     if current_stars == 5:
         return -1
     turns = turns+1
-    total_turns = total_turns+1
+    total_turns = total_turns + 1
     game_turns = game_turns + 1
     streak = streak + 1
-    if (current_stars < count_stars(total_turns, game_turns, mvps, streak)):
+    if current_stars < count_stars(total_turns, game_turns, mvps, streak):
         return turns
     else:
         return days_to_next_star(turns, current_stars, total_turns, game_turns, mvps, streak)
+
 
 # Function to count stars based on stats
 def count_stars(total_turns, game_turns, mvps, streak):
@@ -365,55 +382,59 @@ def count_stars(total_turns, game_turns, mvps, streak):
     star4 = streak_stars(streak)
     return math.ceil(statistics.median([star1, star2, star3, star4]))
 
+
 # Count star level of streaks stat
 def streak_stars(streak):
     stars = 1
-    if(streak > 24):
+    if streak > 24:
         stars = 5
-    elif(streak > 9):
+    elif streak > 9:
         stars = 4
-    elif(streak > 4):
+    elif streak > 4:
         stars = 3
-    elif(streak > 2):
+    elif streak > 2:
         stars = 2
     return stars
+
 
 # Count star level of mvps stat
 def mvp_stars(mvps):
     stars = 1
-    if(mvps > 24):
+    if mvps > 24:
         stars = 5
-    elif(mvps > 9):
+    elif mvps > 9:
         stars = 4
-    elif(mvps > 4):
+    elif mvps > 4:
         stars = 3
-    elif(mvps > 0):
+    elif mvps > 0:
         stars = 2
     return stars
+
 
 # Count star level of game turns stat
 def game_turn_stars(game_turns):
     stars = 1
-    if(game_turns > 39):
+    if game_turns > 39:
         stars = 5
-    elif(game_turns > 24):
+    elif game_turns > 24:
         stars = 4
-    elif(game_turns > 9):
+    elif game_turns > 9:
         stars = 3
-    elif (game_turns > 4):
+    elif game_turns > 4:
         stars = 2
     return stars
+
 
 # Count star level of total turns stat
 def total_turn_stars(total_turns):
     stars = 1
-    if(total_turns > 99):
+    if total_turns > 99:
         stars = 5
-    elif(total_turns > 49):
+    elif total_turns > 49:
         stars = 4
-    elif(total_turns > 24):
+    elif total_turns > 24:
         stars = 3
-    elif(total_turns > 9):
+    elif total_turns > 9:
         stars = 2
     return stars
 
@@ -422,6 +443,8 @@ def total_turn_stars(total_turns):
 # Filenames
 #
 ###############################################################
+
+
 def get_log_file():
     fs = open(LOG_FILE, "a")
     return fs
@@ -431,11 +454,14 @@ def get_log_file():
 # Database -- taken from https://flask.palletsprojects.com/en/2.2.x/patterns/sqlite3/
 #
 ###############################################################
+
+
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
         db = g._database = sqlite3.connect(DB)
     return db
+
 
 @app.teardown_appcontext
 def close_connection(exception):
@@ -448,6 +474,7 @@ def close_connection(exception):
 # Let's go!!!!
 #
 ###############################################################
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=HTTP_PORT)
