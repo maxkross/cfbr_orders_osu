@@ -1,4 +1,4 @@
-#!/bin bash
+#!/usr/bin/env bash
 
 sqlite3 files/cfbrisk.db <<EOF
 
