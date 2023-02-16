@@ -1,0 +1,28 @@
+body {
+    text-align: center;
+    width: 100%;
+    margin: 0px;
+}
+.image-container {
+    left: 0;
+    margin: auto;
+    right: 0;
+    text-align: center;
+    width: 100%;
+}
+.image-container img {
+    max-width: 100%;
+}
+h2 {
+    margin: 5px;
+}
+.stars {
+    font-size: 3em;
+    line-height: 1em;
+    margin: 5px;
+}
+#accept_orders{
+    width: 200px;
+    height: 100px;
+    font-size: 1.5em;
+}
