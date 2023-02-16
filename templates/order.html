@@ -4,9 +4,9 @@
 
 {% block body %}
 <h2>Greetings, {{ username }}</h2>
-<h2 style="font-size: 3em; line-height: .5em;">{{ current_stars * "✯" }}</h2>
-<div style="padding=20px">I see you are a {{ current_stars }} star. Thank you for your commitment.</div><br>
-<div style="padding=20px">
+<h2 class="stars">{{ current_stars * "✯" }}</h2>
+<div>I see you have been playing for {{ total_turns }} turns. Thank you for your commitment.</div><br>
+<div>
     {% if order: %}
     Today is {{ hoy }}. Your order is to attack/defend:
     <h2>{{ order }}</h2>
@@ -17,6 +17,6 @@
 </div><br>
 <br>
 {% if order: %}
-<button onclick="window.location.href='{{confirm_url}}';" style="width: 200px; height: 100px;">Accept Orders</button>
+<button onclick="window.location.href='{{confirm_url}}';" id="accept_orders">Accept Orders</button>
 {% endif %}
 {% endblock %}
