@@ -1,0 +1,22 @@
+{% extends 'index.html' %}
+
+{% block title %} Order {% endblock %}
+
+{% block body %}
+<h2>Greetings, {{ username }}</h2>
+<h2 style="font-size: 3em; line-height: .5em;">{{ current_stars * "✯" }}</h2>
+<div style="padding=20px">I see you are a {{ current_stars }} star. Thank you for your commitment.</div><br>
+<div style="padding=20px">
+    {% if order: %}
+    Today is {{ hoy }}. Your order is to attack/defend:
+    <h2>{{ order }}</h2>
+    Please submit your move at <a href='https://www.collegefootballrisk.com'>CollegeFootballRisk.com</a>.
+    {% else: %}
+    Orders have not been loaded for today. Please check back later.
+    {% endif %}
+</div><br>
+<br>
+{% if order: %}
+<button onclick="window.location.href='{{confirm_url}}';" style="width: 200px; height: 100px;">Accept Orders</button>
+{% endif %}
+{% endblock %}

@@ -1,10 +1,9 @@
-from flask import Flask, abort, request, make_response, redirect, g
+from flask import Flask, abort, request, make_response, redirect, g, render_template
 import requests
 import requests.auth
 from uuid import uuid4
 import urllib
 from datetime import datetime, timedelta
-from flask import render_template
 import math
 import statistics
 from pytz import timezone
@@ -23,24 +22,21 @@ config = dotenv_values('.env')
 @app.route('/')
 def homepage():
     access_token = request.cookies.get('a')
-    confirmation = request.args.get('confirmed', default = 0, type = int)
+    confirmation = request.args.get('confirmed', default=0, type=int)
 
     log = get_log_file()
 
-    if (access_token == None):
-        header1 = "Welcome to Central Command!"
+    if access_token is None:
         link = make_authorization_url()
-
-        resp = make_response(render_template('auth.html', title='What Are My Orders?', header=header1, authlink=link))
+        resp = make_response(render_template('auth.html', authlink=link))
         return resp
     else:
         headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
         response = requests.get(config['REDDIT_ACCOUNT_URI'], headers=headers)
-        if (response.status_code == 401):
-            log.write("Error,"+access_token+",401 Error from CFBR API\n" )
-            header1 = "Welcome to Central Command!"
+        if response.status_code == 401:
+            log.write(f"Error,{access_token},401 Error from CFBR API\n")
             link = make_authorization_url()
-            resp = make_response(render_template('auth.html', title='What Are My Orders?', header=header1, authlink=link))
+            resp = make_response(render_template('auth.html', authlink=link))
             return resp
         else:
             # Let's get the basics
@@ -52,58 +48,46 @@ def homepage():
             active_team = response.json()['active_team']['name']
             current_stars = response.json()['ratings']['overall']
 
-            order_msg = ""
-            display_button = False
+            order = ""
             # Enemy rogue or SPY!!!! Just give them someone to attack.
             if active_team != config['THE_GOOD_GUYS']:
-                order_msg = "Your order is to attack/defend "
                 order = get_foreign_order(active_team, CFBR_day(), CFBR_month())
             # Good guys get their assignments here
             else:
-                order = get_next_order(CFBR_day(), CFBR_month(), username, current_stars)
                 existing_assignment = user_already_assigned(username, CFBR_day(), CFBR_month())
-
-                if order is None:
-                    order_msg = "Orders have not been loaded for today. Please check back later."
-                    order = ""
-                elif existing_assignment is not None: # Already got an assignment today.
-                    order_msg = "Your order is to attack/defend "
+                if existing_assignment is not None:  # Already got an assignment today.
                     order = existing_assignment
-                    if confirmation != 1:
-                        display_button = True
                 else: # Newly made assignment
-                    order_msg = "Your order is to attack/defend "
+                    # Step one of getting to multi-order -- just pull the first value off the response
+                    order = get_next_orders(CFBR_day(), CFBR_month())[0]
                     write_new_order(username, order, current_stars)
-                    display_button = True
 
-            log.write("SUCCESS,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+ ",Order: "+order_msg+order+"\n")
-            header1 = "Greetings, " + username
+            log.write(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order: {order}\n")
 
             try:
-                div1 = "I see you are a "+ str(current_stars) + " star. Thank you for your commitment."
-                div2 = "Today is " + hoy + ".  " +order_msg
-                if confirmation == 1:
-                    div1 = "Thank you for confirming your order. Good luck out there, soldier."
+                if confirmation:
                     #TODO: If a user sits on the order-confirmation page for a long enough time, they could
                     # "confirm" yesterday's order but it'd be written as today's.  Fix this by updating the
                     # query parameters to include the season/day
                     log.write("SUCCESS,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+",Order confirmed! Yay.\n")
                     confirm_order(username)
-
-                resp = make_response(render_template('index.html',
-                                                      title='What Are My Orders?',
-                                                      header=header1,
-                                                      div1=div1,
-                                                      div2=div2,
-                                                      order=order,
-                                                      display_button=display_button,
-                                                      confirm_url=config['CONFIRM_URL']))
+                    resp = make_response(render_template('confirmation.html',
+                                                         username=username))
+                else:
+                    resp = make_response(render_template('order.html',
+                                                         username=username,
+                                                         current_stars=current_stars,
+                                                         hoy=hoy,
+                                                         order=order,
+                                                         confirm_url=config['CONFIRM_URL']))
                 resp.set_cookie('a', access_token.encode())
             except Exception as e:
-                div1 = "Go sign up for CFB Risk."
+                error = "Go sign up for CFB Risk."
                 log.write("ERROR,"+what_day_is_it()+","+CFBR_day()+"-"+CFBR_month()+","+username+",Reddit user who doesn't play CFBR tried to log in\n")
                 log.write("  ERROR,unknown,Exception in get_next_order:"+str(e)+"\n")
-                resp = make_response(render_template('index.html', title='What Are My Orders?', header=header1, div1=div1))
+                resp = make_response(render_template('error.html', username=username,
+                                                     error_message=error,
+                                                     link="https://www.collegefootballrisk.com/"))
             return resp
 
 @app.route('/reddit_callback')
@@ -130,46 +114,9 @@ def reddit_callback():
 #
 ###############################################################
 
-def get_next_order(hoy_d, hoy_m, username, current_stars):
-    log = get_log_file()
-    # Get already assigned moves
-    assigned_orders = get_assigned_orders(hoy_d, hoy_m)
-
-    # Get the orders for this round and count tiers
-    round_orders = get_orders(hoy_d, hoy_m)
-    tiers = get_tiers(round_orders)
-
-    # For each tier, calculate denom and figure out lowest % complete,
-    # if tier 1 store floor, if lowest in tier below 100% then return,
-    # if lowest in tier above 100% and last tier then return floor
-    floor_terr = ""
-    for i in range(1, tiers+1):
-        lowest_score = 999999
-        lowest_terr = ""
-        for rorder in round_orders:
-            if int(round_orders[rorder]['tiers']) == i:
-                if rorder in assigned_orders:
-                    if int(assigned_orders[rorder]) / int(round_orders[rorder]['stars']) < lowest_score:
-                        lowest_score = int(assigned_orders[rorder]) / int(round_orders[rorder]['stars'])
-                        lowest_terr = rorder
-                else:
-                    lowest_score = 0
-                    lowest_terr = rorder
-
-        if i == 1:
-            floor_terr = lowest_terr
-
-        if lowest_score < 1:
-            return lowest_terr
-
-        if (i == tiers) and (lowest_score >= 1):
-            return floor_terr
-
-# Eventually this should return an array of orders, of length num_orders.  But first I need to confirm it works identically to the
-# original version of this method
-def get_next_orders_v2(hoy_d, hoy_m, num_orders=1):
+def get_next_orders(hoy_d, hoy_m, num_orders=1):
     # This is sorted by tier and then least-filled within the tier.
-    round_orders = get_orders_v2(hoy_d, hoy_m)
+    round_orders = get_orders(hoy_d, hoy_m)
     rv = []
 
     # Now all we need to do is find the first 'x' sets of orders that aren't already complete, if they exist...
@@ -193,29 +140,6 @@ def get_next_orders_v2(hoy_d, hoy_m, num_orders=1):
     return rv
 
 def get_orders(hoy_d, hoy_m):
-    query = '''
-        SELECT
-            t.name,
-            p.tier,
-            p.quota
-        FROM plans p
-            INNER JOIN territory t on p.territory=t.id
-        WHERE
-            season=?
-            AND day=?
-        ORDER BY
-            p.tier ASC,
-            p.quota DESC
-    '''
-    res = get_db().execute(query, (hoy_m, hoy_d))
-    round_orders = {}
-    for row in res:
-        territory, tier, stars = row
-        round_orders[territory] = [tier, stars]
-    res.close()
-    return round_orders
-
-def get_orders_v2(hoy_d, hoy_m):
     query = '''
         SELECT
             name,
@@ -272,7 +196,7 @@ def get_orders_v2(hoy_d, hoy_m):
     orders = []
     for row in res:
         territory, tier, quota, assigned, pct_complete = row
-        orders.push({
+        orders.append({
             'territory': territory,
             'tier': tier,
             'quota': quota,
@@ -528,12 +452,8 @@ def total_turn_stars(total_turns):
 #
 ###############################################################
 def get_log_file():
-    try:
-        fname = f"{config['ROOT']}/files/log.txt"
-        fs = open(fname, "a")
-    except:
-        return "Well, this is a problem. Someone tell the admin that the log file is corrupted."
-
+    fname = f"{config['ROOT']}/files/log.txt"
+    fs = open(fname, "a")
     return fs
 
 ###############################################################
