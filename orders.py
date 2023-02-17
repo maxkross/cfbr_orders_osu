@@ -223,9 +223,9 @@ class Orders:
                 TRUE,
                 uuid
             FROM
-                offers off
+                offers
             WHERE
-                off.user=?
+                user=?
                 AND season=?
                 AND day=?
                 AND uuid=?
