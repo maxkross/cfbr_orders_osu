@@ -12,6 +12,8 @@ from cfbr_db import Db
 from orders import Orders
 from logger import Logger
 
+Logger.init_logging()
+log = Logger.getLogger(__name__)
 app = Flask(__name__)
 
 ###############################################################
@@ -34,7 +36,7 @@ def homepage():
         headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
         response = requests.get(REDDIT_ACCOUNT_URI, headers=headers)
         if response.status_code == 401:
-            Logger.log(f"Error,{access_token},401 Error from CFBR API")
+            log.error(f"{access_token},401 Error from CFBR API")
             link = make_authorization_url()
             resp = make_response(render_template('auth.html', authlink=link))
             return resp
@@ -82,7 +84,7 @@ def homepage():
                             "username": username,
                             "territory": existing_move
                         }
-                        Logger.log(f"INFO,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}: Showing them the move they previously made.")
+                        log.info(f"{username}: Showing them the move they previously made.")
 
                 if stage == -1:
                     # They're not in Stage 3.  Are they in stage 2, or did they make a choice?
@@ -99,7 +101,7 @@ def homepage():
                             "username": username,
                             "territory": confirmed_territory
                         }
-                        Logger.log(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username} Chose to move on {confirmed_territory}")
+                        log.info(f"{username}: Chose to move on {confirmed_territory}")
                     else:
                         existing_offers = Orders.user_already_offered(username, CFBR_day(), CFBR_month())
 
@@ -114,7 +116,7 @@ def homepage():
                             "orders": existing_offers,
                             "confirm_url": CONFIRM_URL
                         }
-                        Logger.log(f"INFO,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}: Showing them their previous offers.")
+                        log.info(f"{username}: Showing them their previous offers.")
 
                 if stage == -1:
                     # I guess they're in Stage 1: Make them an offer
@@ -137,9 +139,9 @@ def homepage():
                             "orders": new_offers,
                             "confirm_url": CONFIRM_URL
                         }
-                        Logger.log(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}: Generated new offers.")
+                        log.info(f"{username}: Generated new offers.")
                     else:
-                        Logger.log(f"INFO,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}: Tried to generate new offers and failed. Are the plans loaded for today?")
+                        log.info(f"{username}: Tried to generate new offers and failed. Are the plans loaded for today?")
 
                 if stage == -1:
                     # Nope sorry we're in stage 0: Ain't no orders available yet.  We'll use the order template
@@ -152,15 +154,15 @@ def homepage():
                         "total_turns": total_turns,
                         "hoy": hoy
                     }
-                    Logger.log(f"NO ORDER,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}")
+                    log.warning(f"{username}: Hit the 'No Orders Loaded' page")
 
             try:
                 resp = make_response(render_template(template, **template_params))
                 resp.set_cookie('a', access_token.encode())
             except Exception as e:
                 error = "Go sign up for CFB Risk."
-                Logger.log(f"ERROR,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Reddit user who doesn't play CFBR tried to log in (???)")
-                Logger.log(f"  ERROR,unknown,Exception while rendering for stage {stage}: {e}")
+                log.error(f"{username},Reddit user who doesn't play CFBR tried to log in (???)")
+                log.error(f"   unknown,Exception while rendering for stage {stage}: {e}")
                 resp = make_response(render_template('error.html', username=username,
                                                      error_message=error,
                                                      link="https://www.collegefootballrisk.com/"))
@@ -175,7 +177,7 @@ def reddit_callback():
     state = request.args.get('state', '')
     if not is_valid_state(state):
         # Uh-oh, this request wasn't started by us!
-        Logger.log(f"ERROR,,{CFBR_day()}-{CFBR_month()},{what_day_is_it()}unknown,403 from Reddit Auth API. WTF bro.")
+        log.error(f"unknown,403 from Reddit Auth API. WTF bro.")
         abort(403)
     code = request.args.get('code')
     access_token = get_token(code)
