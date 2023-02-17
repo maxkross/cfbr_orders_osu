@@ -8,10 +8,10 @@
 <div>I see you have been playing for {{ total_turns }} turns. Thank you for your commitment.</div><br>
 <div>
 {% if orders: %}
-    Today is {{ hoy }}.
+    Today is {{ hoy }}.<p>
     {% for order in orders: %}
-    <button onclick="window.location.href='{{confirm_url}}{{order}}';" class="accept_orders">{{ order }}</button><br>
-    {% endif %}
+    <button onclick="window.location.href='{{confirm_url}}{{order[1]}}';" class="accept_orders">{{ order[0] }}</button><br>
+    {% endfor %}
     Please submit your move at <a href='https://www.collegefootballrisk.com'>CollegeFootballRisk.com</a>.
 {% else: %}
     Orders have not been loaded for today. Please check back later.

@@ -68,7 +68,7 @@ class Orders:
                     p.tier,
                     p.quota,
                     SUM(o.stars) AS assigned,
-                    assigned / CAST(p.quota AS REAL) AS pct_complete
+                    SUM(o.stars) / CAST(p.quota AS REAL) AS pct_complete
                 FROM plans p
                     INNER JOIN territory t ON p.territory=t.id
                     LEFT JOIN orders o ON (
@@ -155,7 +155,8 @@ class Orders:
                 user=?
                 AND season=?
                 AND day=?
-            LIMIT 1
+            ORDER BY
+                rank ASC
         '''
         res = Db.get_db().execute(query, (username, hoy_m, hoy_d))
         cmove = res.fetchall()
@@ -241,6 +242,6 @@ class Orders:
             assigned_row = Orders.user_already_moved(username, hoy_d, hoy_m)
             # Returning "None" from here would mean something went seriously askew, since
             # we literally just assigned a row.  Which doesn't mean it won't happen!
-            return None if assigned_row is None else assigned_row[0]
+            return None if assigned_row is None else assigned_row
 
         return None

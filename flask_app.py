@@ -73,7 +73,7 @@ def homepage():
                 stage = -1
 
                 if stage == -1:
-                # Stage 3: This user has already been here and done that.
+                    # Stage 3: This user has already been here and done that.
                     existing_move = Orders.user_already_moved(username, CFBR_day(), CFBR_month())
                     if existing_move is not None:
                         stage = 3
@@ -111,7 +111,8 @@ def homepage():
                             "current_stars": current_stars,
                             "total_turns": total_turns,
                             "hoy": hoy,
-                            "orders": existing_offers
+                            "orders": existing_offers,
+                            "confirm_url": CONFIRM_URL
                         }
                         Logger.log(f"INFO,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}: Showing them their previous offers.")
 
@@ -133,7 +134,8 @@ def homepage():
                             "current_stars": current_stars,
                             "total_turns": total_turns,
                             "hoy": hoy,
-                            "orders": new_offers
+                            "orders": new_offers,
+                            "confirm_url": CONFIRM_URL
                         }
                         Logger.log(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}: Generated new offers.")
                     else:
@@ -153,14 +155,6 @@ def homepage():
                     Logger.log(f"NO ORDER,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}")
 
             try:
-                # TODO: This entire if-block here could be removed when we support more than a single order,
-                # assuming sending in the orders as a (territory, uuid) tuple is something we can work with in
-                # the template.
-                if 'orders' in template_params.keys() and len(template_params['orders']) > 0:
-                    the_lucky_one = template_params['orders'][0]
-                    template_params['order'] = the_lucky_one[0]
-                    template_params['confirm_url'] = make_confirm_url(the_lucky_one[1])
-
                 resp = make_response(render_template(template, **template_params))
                 resp.set_cookie('a', access_token.encode())
             except Exception as e:
