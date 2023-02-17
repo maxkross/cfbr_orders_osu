@@ -169,9 +169,8 @@ class Orders:
         query = '''
             SELECT
                 t.name,
-                SUM(o.stars) as stars
-            FROM orders o
-                INNER JOIN territory t ON o.territory=t.id
+            FROM enemy_plans e
+                INNER JOIN territory t ON e.territory=t.id
             WHERE
                 team=?
                 AND season=?
