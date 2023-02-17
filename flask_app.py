@@ -1,4 +1,4 @@
-from flask import Flask, abort, request, make_response, redirect, g, render_template
+from flask import Flask, abort, request, make_response, redirect, render_template
 import requests
 import requests.auth
 from uuid import uuid4
@@ -8,13 +8,15 @@ from pytz import timezone
 import sqlite3
 
 from constants import *
+from cfbr_db import Db
+from orders import Orders
 from logger import Logger
 
 app = Flask(__name__)
 
 ###############################################################
 #
-# Functions to handle routes
+# Functions to handle routes & Flask app logic
 #
 ###############################################################
 
@@ -22,7 +24,7 @@ app = Flask(__name__)
 @app.route('/')
 def homepage():
     access_token = request.cookies.get('a')
-    confirmation = request.args.get('confirmed', default=0, type=int)
+    confirmation = request.args.get('confirmed', default=None, type=str)
 
     if access_token is None:
         link = make_authorization_url()
@@ -50,45 +52,119 @@ def homepage():
             order = ""
             # Enemy rogue or SPY!!!! Just give them someone to attack.
             if active_team != THE_GOOD_GUYS:
-                order = get_foreign_order(active_team, CFBR_day(), CFBR_month())
+                order = Orders.get_foreign_order(active_team, CFBR_day(), CFBR_month())
             # Good guys get their assignments here
             else:
-                existing_assignment = user_already_assigned(username, CFBR_day(), CFBR_month())
-                if existing_assignment is not None:  # Already got an assignment today.
-                    order = existing_assignment
-                else: # Newly made assignment
-                    # Step one of getting to multi-order -- just pull the first value off the response
-                    order = get_next_orders(CFBR_day(), CFBR_month())[0]
-                    if order is not None:
-                        write_new_order(username, order, current_stars)
+                # We now have three states, ordered in reverse chronological:
+                # 3) The user has already accepted an order.  Show them the thank you screen, but remind them what (we think)
+                #   they did
+                # 2) The user has been offered a few options.  Retrieve those options and then display them (or confirm
+                #   their choice)
+                # 1) The user is showing up for the first time.  Create offers for them and display them.
+                # (...and 0) There aren't any plans available yet to pick from.)
 
-            if order is not None:
-                Logger.log(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order: {order}")
-            else:
-                Logger.log(f"NO ORDER,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}")
+                CONFIRMATION_PAGE = "confirmation.html"
+                ORDER_PAGE = "order.html"
+                ERROR_PAGE = "error.html"
+                template = ERROR_PAGE
+                template_params = {}
+
+                # This is a shitty way to avoid endlessly nested if/else statements and I welcome a refactor.
+                stage = -1
+
+                if stage == -1:
+                # Stage 3: This user has already been here and done that.
+                    existing_move = Orders.user_already_moved(username, CFBR_day(), CFBR_month())
+                    if existing_move is not None:
+                        stage = 3
+                        template = CONFIRMATION_PAGE
+                        template_params = {
+                            "username": username,
+                            "territory": existing_move
+                        }
+                        Logger.log(f"INFO,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}: Showing them the move they previously made.")
+
+                if stage == -1:
+                    # They're not in Stage 3.  Are they in stage 2, or did they make a choice?
+                    existing_offers = None
+                    confirmed_territory = None
+                    if confirmation:
+                        confirmed_territory = Orders.confirm_offer(username, CFBR_day(), CFBR_month(), confirmation)
+
+                    if confirmed_territory:
+                        # They made a choice!  Our favorite.
+                        stage = 2
+                        template = CONFIRMATION_PAGE
+                        template_params = {
+                            "username": username,
+                            "territory": confirmed_territory
+                        }
+                        Logger.log(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username} Chose to move on {confirmed_territory}")
+                    else:
+                        existing_offers = Orders.user_already_offered(username, CFBR_day(), CFBR_month())
+
+                    if existing_offers is not None and len(existing_offers) > 0:
+                        stage = 2
+                        template = ORDER_PAGE
+                        template_params = {
+                            "username": username,
+                            "current_stars": current_stars,
+                            "total_turns": total_turns,
+                            "hoy": hoy,
+                            "orders": existing_offers
+                        }
+                        Logger.log(f"INFO,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}: Showing them their previous offers.")
+
+                if stage == -1:
+                    # I guess they're in Stage 1: Make them an offer
+                    new_offer_territories = Orders.get_next_offers(CFBR_day(), CFBR_month(), current_stars)
+
+                    if len(new_offer_territories) > 0:
+                        new_offers = []
+                        for i in range(len(new_offer_territories)):
+                            offer_uuid = Orders.write_new_offer(username, new_offer_territories[i],
+                                CFBR_day(), CFBR_month(), current_stars, i)
+                            new_offers.append((new_offer_territories[i], offer_uuid))
+
+                        stage = 1
+                        template = ORDER_PAGE
+                        template_params = {
+                            "username": username,
+                            "current_stars": current_stars,
+                            "total_turns": total_turns,
+                            "hoy": hoy,
+                            "orders": new_offers
+                        }
+                        Logger.log(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}: Generated new offers.")
+
+                if stage == -1:
+                    # Nope sorry we're in stage 0: Ain't no orders available yet.  We'll use the order template
+                    # sans orders until we create a page with a sick meme telling the Strategists to hurry up.
+                    stage = 0
+                    template = ORDER_PAGE
+                    template_params = {
+                        "username": username,
+                        "current_stars": current_stars,
+                        "total_turns": total_turns,
+                        "hoy": hoy
+                    }
+                    Logger.log(f"NO ORDER,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}")
 
             try:
-                if confirmation:
-                    # TODO: If a user sits on the order-confirmation page for a long enough time, they could
-                    # "confirm" yesterday's order but it'd be written as today's.  Fix this by updating the
-                    # query parameters to include the season/day
-                    Logger.log(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order confirmed! Yay.")
-                    confirm_order(username)
-                    resp = make_response(render_template('confirmation.html',
-                                                         username=username))
-                else:
-                    resp = make_response(render_template('order.html',
-                                                         username=username,
-                                                         current_stars=current_stars,
-                                                         total_turns=total_turns,
-                                                         hoy=hoy,
-                                                         order=order,
-                                                         confirm_url=CONFIRM_URL))
+                # TODO: This entire if-block here could be removed when we support more than a single order,
+                # assuming sending in the orders as a (territory, uuid) tuple is something we can work with in
+                # the template.
+                if 'orders' in template_params.keys() and len(template_params['orders']) > 0:
+                    the_lucky_one = template_params['orders'][0]
+                    template_params['order'] = the_lucky_one[0]
+                    template_params['confirm_url'] = make_confirm_url(the_lucky_one[1])
+
+                resp = make_response(render_template(template, **template_params))
                 resp.set_cookie('a', access_token.encode())
             except Exception as e:
                 error = "Go sign up for CFB Risk."
-                Logger.log(f"ERROR,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Reddit user who doesn't play CFBR tried to log in")
-                Logger.log(f"  ERROR,unknown,Exception in get_next_order:{e}")
+                Logger.log(f"ERROR,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Reddit user who doesn't play CFBR tried to log in (???)")
+                Logger.log(f"  ERROR,unknown,Exception while rendering for stage {stage}: {e}")
                 resp = make_response(render_template('error.html', username=username,
                                                      error_message=error,
                                                      link="https://www.collegefootballrisk.com/"))
@@ -112,197 +188,11 @@ def reddit_callback():
     response.set_cookie('a', access_token.encode())
     return response
 
-###############################################################
-#
-# Functions to handle order logic
-#
-###############################################################
 
-def get_next_orders(hoy_d, hoy_m, num_orders=1):
-    # This is sorted by tier and then least-filled within the tier.
-    round_orders = get_orders(hoy_d, hoy_m)
-    rv = []
+@app.teardown_appcontext
+def close_connection(exception):
+    Db.close_connection(exception)
 
-    # Now all we need to do is find the first 'x' sets of orders that aren't already complete, if they exist...
-    for candidate in round_orders:
-        if candidate['pct_complete'] < 1:
-            rv.append(candidate['territory'])
-        if len(rv) >= num_orders:
-            return rv
-
-    # ...and if they need more orders than we've already pulled, we'll just tell them to go with the Tier 1 targets with the
-    # lowest percentage completion (which will already be over 100%, since we got here in the first place)
-    for candidate in round_orders:
-        territory = candidate['territory']
-        if not territory in rv:
-            rv.append(territory)
-        if len(rv) >= num_orders:
-            return rv
-
-    # It's theoretically possible that we have less possible total orders than are requested; if we made it this far,
-    # return whatever we've got
-    return rv
-
-
-
-def get_orders(hoy_d, hoy_m):
-    query = '''
-        SELECT
-            name,
-            tier,
-            quota,
-            assigned,
-            pct_complete
-        FROM (
-            SELECT
-                t.name,
-                p.season,
-                p.day,
-                p.tier,
-                p.quota,
-                0 as assigned,
-                0 as pct_complete
-            FROM plans p
-                INNER JOIN territory t ON p.territory=t.id
-            WHERE
-                NOT EXISTS (SELECT * FROM orders o
-                                WHERE p.territory = o.territory
-                                    AND p.season=o.season
-                                    AND p.day=o.day
-                                    AND o.accepted=TRUE)
-            UNION ALL
-            SELECT
-                t.name,
-                p.season,
-                p.day,
-                p.tier,
-                p.quota,
-                SUM(o.stars) AS assigned,
-                stars / CAST(p.quota AS REAL) AS pct_complete
-            FROM plans p
-                INNER JOIN territory t ON p.territory=t.id
-                LEFT JOIN orders o ON (
-                    p.territory = o.territory
-                    AND p.season = o.season
-                    AND p.day = o.day
-                    )
-            WHERE
-                o.accepted=TRUE
-            GROUP BY
-                p.territory, p.season, p.day
-        )
-        WHERE
-            season = ?
-            AND day = ?
-        ORDER BY
-            tier ASC,
-            pct_complete ASC;
-    '''
-    res = get_db().execute(query, (hoy_m, hoy_d))
-    orders = []
-    for row in res:
-        territory, tier, quota, assigned, pct_complete = row
-        orders.append({
-            'territory': territory,
-            'tier': tier,
-            'quota': quota,
-            'assigned': assigned,
-            'pct_complete': pct_complete
-        })
-    res.close()
-    return orders
-
-
-def get_tiers(orders):
-    return max(x['tier'] for x in orders.values())
-
-
-
-def get_assigned_orders(hoy_d, hoy_m):
-    query = '''
-        SELECT
-            t.name,
-            SUM(o.stars) as stars
-        FROM orders o
-            INNER JOIN territory t ON o.territory=t.id
-        WHERE
-            season=?
-            AND day=?
-            AND accepted=TRUE
-        GROUP BY t.name
-        ORDER BY stars DESC
-        '''
-    res = get_db().execute(query, (hoy_m, hoy_d))
-    territory_moves = dict(res.fetchall())
-    res.close()
-    return territory_moves
-
-
-def user_already_assigned(username, hoy_d, hoy_m):
-    query = '''
-        SELECT
-            t.name
-        FROM orders o
-            INNER JOIN territory t ON o.territory=t.id
-        WHERE
-            user=?
-            AND season=?
-            AND day=?
-        LIMIT 1
-    '''
-    res = get_db().execute(query, (username, hoy_m, hoy_d))
-    cmove = res.fetchone()
-    res.close()
-
-    return None if cmove is None else cmove[0]
-
-
-def get_foreign_order(team, hoy_d, hoy_m):
-    query = '''
-        SELECT
-            t.name,
-            SUM(o.stars) as stars
-        FROM orders o
-            INNER JOIN territory t ON o.territory=t.id
-        WHERE
-            team=?
-            AND season=?
-            AND day=?
-        GROUP BY t.name
-        ORDER BY stars DESC
-    '''
-    res = get_db().execute(query, (team, hoy_m, hoy_d))
-    fmove = res.fetchone()
-    res.close()
-
-    # If all else fails, default to the most primal hate
-    return "Columbus" if fmove is None else fmove[0]
-
-
-def write_new_order(username, order, current_stars):
-    query = '''
-        INSERT INTO orders (season, day, user, territory, stars)
-        VALUES (?, ?, ?,
-            (SELECT id FROM territory WHERE name=?),
-        ?)
-    '''
-    db = get_db()
-    db.execute(query, (CFBR_month(), CFBR_day(), username, order, current_stars))
-    db.commit()
-
-
-def confirm_order(username):
-    query = '''
-        UPDATE orders
-            SET accepted=TRUE
-        WHERE
-            user=?
-            AND season=?
-            AND day=?
-    '''
-    db = get_db()
-    db.execute(query, (username, CFBR_month(), CFBR_day()))
-    db.commit()
 
 ###############################################################
 #
@@ -387,25 +277,17 @@ def get_username(access_token):
     me_json = response.json()
     return me_json['name']
 
+
 ###############################################################
 #
-# Database -- taken from https://flask.palletsprojects.com/en/2.2.x/patterns/sqlite3/
+# Misc helper functions
 #
 ###############################################################
 
 
-def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect(DB)
-    return db
+def make_confirm_url(uuid):
+    return f"{CONFIRM_URL}{uuid}"
 
-
-@app.teardown_appcontext
-def close_connection(exception):
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
 
 ###############################################################
 #

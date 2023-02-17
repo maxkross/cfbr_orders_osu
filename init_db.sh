@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS orders (
     territory INTEGER NOT NULL,
     stars INTEGER,
     accepted BOOLEAN DEFAULT FALSE,
+    uuid TEXT NOT NULL UNIQUE,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
@@ -54,12 +55,13 @@ CREATE UNIQUE INDEX orders_for_day_and_user ON orders (season, day, user);
 
 CREATE TABLE IF NOT EXISTS offers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    season INTEGER,
-    day INTEGER,
+    season INTEGER NOT NULL,
+    day INTEGER NOT NULL,
     user TEXT NOT NULL,
-    territory INTEGER,
-    stars INTEGER,
-    rank INTEGER,
+    territory INTEGER NOT NULL,
+    stars INTEGER NOT NULL,
+    rank INTEGER NOT NULL DEFAULT 0,
+    uuid TEXT NOT NULL UNIQUE,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
