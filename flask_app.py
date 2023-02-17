@@ -136,6 +136,8 @@ def homepage():
                             "orders": new_offers
                         }
                         Logger.log(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}: Generated new offers.")
+                    else:
+                        Logger.log(f"INFO,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}: Tried to generate new offers and failed. Are the plans loaded for today?")
 
                 if stage == -1:
                     # Nope sorry we're in stage 0: Ain't no orders available yet.  We'll use the order template
