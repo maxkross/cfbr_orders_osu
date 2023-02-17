@@ -1,0 +1,31 @@
+{% extends 'index.html' %}
+
+{% block title %} Admin {% endblock %}
+
+{% block body %}
+
+{% if orders %}
+<p></p>
+<div>
+<table id="orders">
+    <tr>
+        <th>Territory</th>
+        <th>Tier</th>
+        <th>Quota</th>
+        <th>Assigned Stars</th>
+        <th>Percentage Complete</th>
+    </tr>
+    {% for order in orders: %}
+    <tr>
+        <td>{{order.territory}}</td>
+        <td>{{order.tier}}</td>
+        <td>{{order.quota}}</td>
+        <td>{{order.assigned}}</td>
+        <td>{{order.display_pct}}</td>
+    </tr>
+    {% endfor %}
+</table>
+</div>
+{% endif %}
+
+{% endblock %}

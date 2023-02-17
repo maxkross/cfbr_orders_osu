@@ -26,3 +26,28 @@ h2 {
     height: 100px;
     font-size: 1.5em;
 }
+
+#orders {
+    font-family: Arial, Helvetica, sans-serif;
+    border-collapse: collapse;
+    width: 70%;
+    margin-left: 15%;
+    margin-right: 15%;
+}
+
+#orders td, #orders th {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+#orders tr:nth-child(even){background-color: #f2f2f2;}
+
+#orders tr:hover {background-color: #ddd;}
+
+#orders th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color: #00274C;
+    color: #FFCB05;
+}
