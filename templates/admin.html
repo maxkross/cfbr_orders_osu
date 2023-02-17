@@ -3,10 +3,9 @@
 {% block title %} Admin {% endblock %}
 
 {% block body %}
-
-{% if orders %}
 <p></p>
 <div>
+{% if orders %}
 <table id="orders">
     <tr>
         <th>Territory</th>
@@ -26,6 +25,9 @@
     {% endfor %}
 </table>
 </div>
+{% else %}
+    Orders don't seem to be loaded yet.
 {% endif %}
+</div>
 
 {% endblock %}
