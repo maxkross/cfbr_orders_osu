@@ -68,7 +68,7 @@ class Orders:
                     p.tier,
                     p.quota,
                     SUM(o.stars) AS assigned,
-                    stars / CAST(p.quota AS REAL) AS pct_complete
+                    assigned / CAST(p.quota AS REAL) AS pct_complete
                 FROM plans p
                     INNER JOIN territory t ON p.territory=t.id
                     LEFT JOIN orders o ON (
