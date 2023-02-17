@@ -8,10 +8,17 @@
 <div>I see you have been playing for {{ total_turns }} turns. Thank you for your commitment.</div><br>
 <div>
 {% if orders: %}
-    Today is {{ hoy }}.<p>
+    Today is {{ hoy }}.<p></p>
+    {% if orders|length > 1: %}
+        Click one of the buttons below to choose your deployment, soldier!
+    {% else: %}
+        Click the button below to accept your order to attack/defend
+    {% endif %}
+    <p></p>
     {% for order in orders: %}
     <button onclick="window.location.href='{{confirm_url}}{{order[1]}}';" class="accept_orders">{{ order[0] }}</button><br>
     {% endfor %}
+    <p></p>
     Please submit your move at <a href='https://www.collegefootballrisk.com'>CollegeFootballRisk.com</a>.
 {% else: %}
     Orders have not been loaded for today. Please check back later.
