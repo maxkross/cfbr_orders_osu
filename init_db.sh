@@ -44,13 +44,41 @@ CREATE TABLE IF NOT EXISTS orders (
     season INTEGER,
     day INTEGER,
     user TEXT NOT NULL,
-    territory INTEGER,
+    territory INTEGER NOT NULL,
     stars INTEGER,
     accepted BOOLEAN DEFAULT FALSE,
+    uuid TEXT NOT NULL UNIQUE,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
 CREATE UNIQUE INDEX orders_for_day_and_user ON orders (season, day, user);
+
+CREATE TABLE IF NOT EXISTS offers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season INTEGER NOT NULL,
+    day INTEGER NOT NULL,
+    user TEXT NOT NULL,
+    territory INTEGER NOT NULL,
+    stars INTEGER NOT NULL,
+    rank INTEGER NOT NULL DEFAULT 0,
+    uuid TEXT NOT NULL UNIQUE,
+    FOREIGN KEY (territory)
+        REFERENCES territory (id)
+);
+CREATE UNIQUE INDEX offer_user_rank ON offers (season, day, user, rank);
+
+CREATE TABLE IF NOT EXISTS roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user TEXT NOT NULL UNIQUE,
+    role INTEGER NOT NULL,
+    FOREIGN KEY (role)
+        REFERENCES roles (id)
+);
 
 INSERT INTO region VALUES(0,"Unplaced");
 INSERT INTO region VALUES(1,"Pacific Northwest");
@@ -261,6 +289,24 @@ INSERT INTO territory VALUES(200,"Montreal",3);
 INSERT INTO territory VALUES(201,"Montana",8);
 INSERT INTO territory VALUES(202,"Dakotas",8);
 INSERT INTO territory VALUES(203,"Vancouver",1);
+INSERT INTO territory VALUES(204,"Palo Alto",9);
+
+INSERT INTO roles VALUES(1,"unvetted");
+INSERT INTO roles VALUES(2,"mercenary");
+INSERT INTO roles VALUES(3,"wolverine");
+INSERT INTO roles VALUES(4,"hacker");
+INSERT INTO roles VALUES(5,"strategist");
+INSERT INTO roles VALUES(6,"coach");
+
+INSERT INTO users VALUES(1,"dustinruns",5);
+INSERT INTO users VALUES(2,"Tapin42",4);
+INSERT INTO users VALUES(3,"EpicWolverine",6);
+INSERT INTO users VALUES(4,"Groenket",6);
+INSERT INTO users VALUES(5,"Kirsten137",6);
+INSERT INTO users VALUES(6,"shitshaveshine",6);
+INSERT INTO users VALUES(7,"acarrick",6);
+INSERT INTO users VALUES(8,"lAMA_Bear_AMA",6);
+INSERT INTO users VALUES(9,"Belgara",6);
 
 COMMIT;
 

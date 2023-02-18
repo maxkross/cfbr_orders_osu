@@ -1,4 +1,4 @@
-from flask import Flask, abort, request, make_response, redirect, g, render_template
+from flask import Flask, abort, request, make_response, redirect, render_template
 import requests
 import requests.auth
 from uuid import uuid4
@@ -8,89 +8,155 @@ from pytz import timezone
 import sqlite3
 
 from constants import *
+from cfbr_db import Db
+from orders import Orders
+from admin_page import Admin
 from logger import Logger
 
+Logger.init_logging()
+log = Logger.getLogger(__name__)
 app = Flask(__name__)
 
 ###############################################################
 #
-# Functions to handle routes
+# Functions to handle routes & Flask app logic
 #
 ###############################################################
 
 
 @app.route('/')
 def homepage():
-    access_token = request.cookies.get('a')
-    confirmation = request.args.get('confirmed', default=0, type=int)
+    auth_resp_if_necessary, username = check_identity_or_auth(request)
 
-    if access_token is None:
-        link = make_authorization_url()
-        resp = make_response(render_template('auth.html', authlink=link))
-        return resp
+    # The user needs to authenticate, short-circuit here.
+    if auth_resp_if_necessary:
+        return auth_resp_if_necessary
+
+    confirmation = request.args.get('confirmed', default=None, type=str)
+    hoy = what_day_is_it()
+
+    # Let's get this user's CFBR info
+    response = requests.get(f"{CFBR_REST_API}/player?player={username}")
+    active_team = response.json()['active_team']['name']
+    total_turns = response.json()['stats']['totalTurns']
+    current_stars = response.json()['ratings']['overall']
+
+    # Enemy rogue or SPY!!!! Just give them someone to attack.
+    # TODO: This codepath is currently broken.  Don't rely on it until it gets fixed again.
+    if active_team != THE_GOOD_GUYS:
+        order = Orders.get_foreign_order(active_team, CFBR_day(), CFBR_month())
+    # Good guys get their assignments here
     else:
-        headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
-        response = requests.get(REDDIT_ACCOUNT_URI, headers=headers)
-        if response.status_code == 401:
-            Logger.log(f"Error,{access_token},401 Error from CFBR API")
-            link = make_authorization_url()
-            resp = make_response(render_template('auth.html', authlink=link))
-            return resp
-        else:
-            # Let's get the basics
-            username = get_username(access_token)
-            hoy = what_day_is_it()
+        # We now have three states, ordered in reverse chronological:
+        # 3) The user has already accepted an order.  Show them the thank you screen, but remind them what (we think)
+        #   they did
+        # 2) The user has been offered a few options.  Retrieve those options and then display them (or confirm
+        #   their choice)
+        # 1) The user is showing up for the first time.  Create offers for them and display them.
+        # (...and 0) There aren't any plans available yet to pick from.)
 
-            # Let's get this user's CFBR info
-            response = requests.get(f"{CFBR_REST_API}/player?player={username}")
-            active_team = response.json()['active_team']['name']
-            total_turns = response.json()['stats']['totalTurns']
-            current_stars = response.json()['ratings']['overall']
+        CONFIRMATION_PAGE = "confirmation.html"
+        ORDER_PAGE = "order.html"
+        ERROR_PAGE = "error.html"
+        template = ERROR_PAGE
+        template_params = {}
 
-            order = ""
-            # Enemy rogue or SPY!!!! Just give them someone to attack.
-            if active_team != THE_GOOD_GUYS:
-                order = get_foreign_order(active_team, CFBR_day(), CFBR_month())
-            # Good guys get their assignments here
+        # This is a shitty way to avoid endlessly nested if/else statements and I welcome a refactor.
+        stage = -1
+
+        if stage == -1:
+            # Stage 3: This user has already been here and done that.
+            existing_move = Orders.user_already_moved(username, CFBR_day(), CFBR_month())
+            if existing_move is not None:
+                stage = 3
+                template = CONFIRMATION_PAGE
+                template_params = {
+                    "username": username,
+                    "territory": existing_move
+                }
+                log.info(f"{username}: Showing them the move they previously made.")
+
+        if stage == -1:
+            # They're not in Stage 3.  Are they in stage 2, or did they make a choice?
+            existing_offers = None
+            confirmed_territory = None
+            if confirmation:
+                confirmed_territory = Orders.confirm_offer(username, CFBR_day(), CFBR_month(), confirmation)
+
+            if confirmed_territory:
+                # They made a choice!  Our favorite.
+                stage = 2
+                template = CONFIRMATION_PAGE
+                template_params = {
+                    "username": username,
+                    "territory": confirmed_territory
+                }
+                log.info(f"{username}: Chose to move on {confirmed_territory}")
             else:
-                order = get_next_order(CFBR_day(), CFBR_month())
-                existing_assignment = user_already_assigned(username, CFBR_day(), CFBR_month())
-                if existing_assignment is not None:  # Already got an assignment today.
-                    order = existing_assignment
-                elif order is not None:  # Newly made assignment
-                    write_new_order(username, order, current_stars)
+                existing_offers = Orders.user_already_offered(username, CFBR_day(), CFBR_month())
 
-            if order is not None:
-                Logger.log(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order: {order}")
+            if existing_offers is not None and len(existing_offers) > 0:
+                stage = 2
+                template = ORDER_PAGE
+                template_params = {
+                    "username": username,
+                    "current_stars": current_stars,
+                    "total_turns": total_turns,
+                    "hoy": hoy,
+                    "orders": existing_offers,
+                    "confirm_url": CONFIRM_URL
+                }
+                log.info(f"{username}: Showing them their previous offers.")
+
+        if stage == -1:
+            # I guess they're in Stage 1: Make them an offer
+            new_offer_territories = Orders.get_next_offers(CFBR_day(), CFBR_month(), current_stars)
+
+            if len(new_offer_territories) > 0:
+                new_offers = []
+                for i in range(len(new_offer_territories)):
+                    offer_uuid = Orders.write_new_offer(username, new_offer_territories[i],
+                        CFBR_day(), CFBR_month(), current_stars, i)
+                    new_offers.append((new_offer_territories[i], offer_uuid))
+
+                stage = 1
+                template = ORDER_PAGE
+                template_params = {
+                    "username": username,
+                    "current_stars": current_stars,
+                    "total_turns": total_turns,
+                    "hoy": hoy,
+                    "orders": new_offers,
+                    "confirm_url": CONFIRM_URL
+                }
+                log.info(f"{username}: Generated new offers.")
             else:
-                Logger.log(f"NO ORDER,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username}")
+                log.info(f"{username}: Tried to generate new offers and failed. Are the plans loaded for today?")
 
-            try:
-                if confirmation:
-                    # TODO: If a user sits on the order-confirmation page for a long enough time, they could
-                    # "confirm" yesterday's order but it'd be written as today's.  Fix this by updating the
-                    # query parameters to include the season/day
-                    Logger.log(f"SUCCESS,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Order confirmed! Yay.")
-                    confirm_order(username)
-                    resp = make_response(render_template('confirmation.html',
-                                                         username=username))
-                else:
-                    resp = make_response(render_template('order.html',
-                                                         username=username,
-                                                         current_stars=current_stars,
-                                                         total_turns=total_turns,
-                                                         hoy=hoy,
-                                                         order=order,
-                                                         confirm_url=CONFIRM_URL))
-                resp.set_cookie('a', access_token.encode())
-            except Exception as e:
-                error = "Go sign up for CFB Risk."
-                Logger.log(f"ERROR,{what_day_is_it()},{CFBR_day()}-{CFBR_month()},{username},Reddit user who doesn't play CFBR tried to log in")
-                Logger.log(f"  ERROR,unknown,Exception in get_next_order:{e}")
-                resp = make_response(render_template('error.html', username=username,
-                                                     error_message=error,
-                                                     link="https://www.collegefootballrisk.com/"))
-            return resp
+        if stage == -1:
+            # Nope sorry we're in stage 0: Ain't no orders available yet.  We'll use the order template
+            # sans orders until we create a page with a sick meme telling the Strategists to hurry up.
+            stage = 0
+            template = ORDER_PAGE
+            template_params = {
+                "username": username,
+                "current_stars": current_stars,
+                "total_turns": total_turns,
+                "hoy": hoy
+            }
+            log.warning(f"{username}: Hit the 'No Orders Loaded' page")
+
+    try:
+        resp = make_response(render_template(template, **template_params))
+        resp.set_cookie('a', request.cookies.get('a').encode())
+    except Exception as e:
+        error = "Go sign up for CFB Risk."
+        log.error(f"{username},Reddit user who doesn't play CFBR tried to log in (???)")
+        log.error(f"   unknown,Exception while rendering for stage {stage}: {e}")
+        resp = make_response(render_template('error.html', username=username,
+                                                error_message=error,
+                                                link="https://www.collegefootballrisk.com/"))
+    return resp
 
 
 @app.route(REDDIT_CALLBACK_ROUTE)
@@ -101,7 +167,7 @@ def reddit_callback():
     state = request.args.get('state', '')
     if not is_valid_state(state):
         # Uh-oh, this request wasn't started by us!
-        Logger.log(f"ERROR,,{CFBR_day()}-{CFBR_month()},{what_day_is_it()}unknown,403 from Reddit Auth API. WTF bro.")
+        log.error(f"unknown,403 from Reddit Auth API. WTF bro.")
         abort(403)
     code = request.args.get('code')
     access_token = get_token(code)
@@ -110,165 +176,21 @@ def reddit_callback():
     response.set_cookie('a', access_token.encode())
     return response
 
-###############################################################
-#
-# Functions to handle order logic
-#
-###############################################################
 
+@app.route('/admin')
+def admin_page():
+    auth_resp_if_necessary, username = check_identity_or_auth(request)
 
-def get_next_order(hoy_d, hoy_m):
-    # Get already assigned moves
-    assigned_orders = get_assigned_orders(hoy_d, hoy_m)
+    # The user needs to authenticate, short-circuit here.
+    if auth_resp_if_necessary:
+        return auth_resp_if_necessary
 
-    # Get the orders for this round and count tiers
-    round_orders = get_orders(hoy_d, hoy_m)
-    tiers = get_tiers(round_orders)
+    return Admin.build_page(request, username, CFBR_day(), CFBR_month())
 
-    # For each tier, calculate denom and figure out lowest % complete,
-    # if tier 1 store floor, if lowest in tier below 100% then return,
-    # if lowest in tier above 100% and last tier then return floor
-    floor_terr = ""
-    for i in range(1, tiers+1):
-        lowest_score = 999999
-        lowest_terr = ""
-        for rorder in round_orders:
-            if int(round_orders[rorder][0]) == i:
-                if rorder in assigned_orders:
-                    if int(assigned_orders[rorder]) / int(round_orders[rorder][1]) < lowest_score:
-                        lowest_score = int(assigned_orders[rorder]) / int(round_orders[rorder][1])
-                        lowest_terr = rorder
-                else:
-                    lowest_score = 0
-                    lowest_terr = rorder
+@app.teardown_appcontext
+def close_connection(exception):
+    Db.close_connection(exception)
 
-        if i == 1:
-            floor_terr = lowest_terr
-
-        if lowest_score < 1:
-            return lowest_terr
-
-        if (i == tiers) and (lowest_score >= 1):
-            return floor_terr
-
-
-def get_orders(hoy_d, hoy_m):
-    query = '''
-        SELECT
-            t.name,
-            p.tier,
-            p.quota
-        FROM plans p
-            INNER JOIN territory t on p.territory=t.id
-        WHERE
-            season=?
-            AND day=?
-        ORDER BY
-            p.tier ASC,
-            p.quota DESC
-    '''
-    res = get_db().execute(query, (hoy_m, hoy_d))
-    round_orders = {}
-    for row in res:
-        territory, tier, stars = row
-        round_orders[territory] = [tier, stars]
-    res.close()
-    return round_orders
-
-
-def get_tiers(orders):
-    tiers = 0
-    for order in orders:
-        if int(orders[order][0]) > tiers:
-            tiers = int(orders[order][0])
-    return tiers
-
-
-def get_assigned_orders(hoy_d, hoy_m):
-    query = '''
-        SELECT
-            t.name,
-            SUM(o.stars) as stars
-        FROM orders o
-            INNER JOIN territory t ON o.territory=t.id
-        WHERE
-            season=?
-            AND day=?
-            AND accepted=TRUE
-        GROUP BY t.name
-        ORDER BY stars DESC
-        '''
-    res = get_db().execute(query, (hoy_m, hoy_d))
-    territory_moves = dict(res.fetchall())
-    res.close()
-    return territory_moves
-
-
-def user_already_assigned(username, hoy_d, hoy_m):
-    query = '''
-        SELECT
-            t.name
-        FROM orders o
-            INNER JOIN territory t ON o.territory=t.id
-        WHERE
-            user=?
-            AND season=?
-            AND day=?
-        LIMIT 1
-    '''
-    res = get_db().execute(query, (username, hoy_m, hoy_d))
-    cmove = res.fetchone()
-    res.close()
-
-    return None if cmove is None else cmove[0]
-
-
-def get_foreign_order(team, hoy_d, hoy_m):
-    query = '''
-        SELECT
-            t.name,
-            SUM(o.stars) as stars
-        FROM orders o
-            INNER JOIN territory t ON o.territory=t.id
-        WHERE
-            team=?
-            AND season=?
-            AND day=?
-        GROUP BY t.name
-        ORDER BY stars DESC
-    '''
-    res = get_db().execute(query, (team, hoy_m, hoy_d))
-    fmove = res.fetchone()
-    res.close()
-
-    # If all else fails, default to the most primal hate
-    return "Columbus" if fmove is None else fmove[0]
-
-
-def write_new_order(username, order, current_stars):
-    query = '''
-        INSERT INTO orders (season, day, user, territory, stars)
-        VALUES (?, ?, ?,
-            (SELECT id FROM territory WHERE name=?),
-        ?)
-    '''
-    db = get_db()
-    db.execute(query, (CFBR_month(), CFBR_day(), username, order, current_stars))
-    db.commit()
-
-
-def confirm_order(username):
-    query = '''
-        UPDATE orders
-            SET accepted=TRUE
-        WHERE
-            user=?
-            AND season=?
-            AND day=?
-    '''
-    db = get_db()
-    db.execute(query, (username, CFBR_month(), CFBR_day()))
-    db.commit()
 
 ###############################################################
 #
@@ -305,6 +227,34 @@ def CFBR_day():
 def what_day_is_it():
     tz = timezone('EST')
     return datetime.now(tz).strftime("%B %d, %Y")
+
+###############################################################
+#
+# Boilerplate for any page loads
+#
+###############################################################
+
+def check_identity_or_auth(request):
+    access_token = request.cookies.get('a')
+
+    if access_token is None:
+        log.debug(f"Incoming request with no access token, telling them to auth the app")
+        link = make_authorization_url()
+        resp = make_response(render_template('auth.html', authlink=link))
+        return (resp, None)
+
+    headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
+    response = requests.get(REDDIT_ACCOUNT_URI, headers=headers)
+    if response.status_code == 401:
+        log.error(f"{access_token},401 Error from CFBR API")
+        link = make_authorization_url()
+        resp = make_response(render_template('auth.html', authlink=link))
+        return (resp, None)
+
+    # If we made it this far, we theoretically know the user's identity.  Say so.
+    username = get_username(access_token)
+    return (None, username)
+
 
 ###############################################################
 #
@@ -353,25 +303,6 @@ def get_username(access_token):
     me_json = response.json()
     return me_json['name']
 
-###############################################################
-#
-# Database -- taken from https://flask.palletsprojects.com/en/2.2.x/patterns/sqlite3/
-#
-###############################################################
-
-
-def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect(DB)
-    return db
-
-
-@app.teardown_appcontext
-def close_connection(exception):
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
 
 ###############################################################
 #

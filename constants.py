@@ -8,7 +8,7 @@ HTTP_PORT = config['HTTP_PORT']
 BASE_URL = f"http://{DOMAIN}:{HTTP_PORT}"
 REDDIT_CALLBACK_ROUTE = "/reddit_callback"
 REDIRECT_URI = f"{BASE_URL}{REDDIT_CALLBACK_ROUTE}"
-CONFIRM_URL = f"{BASE_URL}/?confirmed=1"
+CONFIRM_URL = f"{BASE_URL}/?confirmed="
 
 CFBR_REST_API = "https://collegefootballrisk.com/api"
 CFBR_MOVE_DEEPLINK = "https://collegefootballrisk.com/#MyMove"

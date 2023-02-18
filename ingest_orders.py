@@ -1,14 +1,12 @@
 import argparse
 import os
 import re
-from dotenv import dotenv_values
+from constants import DB
 import sqlite3
-
-config = dotenv_values('.env')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('file', help="Name of the orders file to ingest")
-parser.add_argument('--db', help="Path to the database [Default is from .env]", default=config['DB'])
+parser.add_argument('--db', help="Path to the database [Default is from .env]", default=DB)
 parser.add_argument('--season', help="The season to ingest into [Default is assumed from filename]")
 parser.add_argument('--day', help="The day to ingest into [Default is assumed from filename]")
 
@@ -31,8 +29,8 @@ input("Press ENTER to continue, ^C to quit.\n")
 
 query = '''
     INSERT INTO plans (season, day, territory, tier, quota)
-    VALUES (?, ?, 
-        (SELECT id FROM territory WHERE name=? COLLATE NOCASE), 
+    VALUES (?, ?,
+        (SELECT id FROM territory WHERE name=? COLLATE NOCASE),
     ?, ?)
 '''
 
@@ -45,4 +43,3 @@ with open(fname, "r") as input:
             print(f"Order '{line.strip()}' successful.")
         except sqlite3.Error as err:
             print(f"Order '{line.strip()}' rejected.  Is that a valid territory? Was this plan already ingested?")
-

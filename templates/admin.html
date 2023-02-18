@@ -1,0 +1,33 @@
+{% extends 'index.html' %}
+
+{% block title %} Admin {% endblock %}
+
+{% block body %}
+<p></p>
+<div>
+{% if orders %}
+<table id="orders">
+    <tr>
+        <th>Territory</th>
+        <th>Tier</th>
+        <th>Quota</th>
+        <th>Assigned Stars</th>
+        <th>Percentage Complete</th>
+    </tr>
+    {% for order in orders: %}
+    <tr>
+        <td>{{order.territory}}</td>
+        <td>{{order.tier}}</td>
+        <td>{{order.quota}}</td>
+        <td>{{order.assigned}}</td>
+        <td>{{order.display_pct}}</td>
+    </tr>
+    {% endfor %}
+</table>
+</div>
+{% else %}
+    Orders don't seem to be loaded yet.
+{% endif %}
+</div>
+
+{% endblock %}
