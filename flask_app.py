@@ -5,7 +5,6 @@ from uuid import uuid4
 import urllib
 from datetime import datetime, timedelta
 from pytz import timezone
-import sqlite3
 
 from constants import *
 from cfbr_db import Db
