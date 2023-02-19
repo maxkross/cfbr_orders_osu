@@ -32,8 +32,6 @@ def homepage():
     if auth_resp_if_necessary:
         return auth_resp_if_necessary
 
-    confirmation = request.args.get('confirmed', default=None, type=str)
-
     # Let's get this user's CFBR info
     response = requests.get(f"{CFBR_REST_API}/player?player={username}")
     active_team = response.json()['active_team']['name']
@@ -78,6 +76,7 @@ def homepage():
             # They're not in Stage 3.  Are they in stage 2, or did they make a choice?
             existing_offers = None
             confirmed_territory = None
+            confirmation = request.args.get('confirmed', default=None, type=str)
             if confirmation:
                 confirmed_territory = Orders.confirm_offer(username, CFBR_day(), CFBR_month(), confirmation)
 
