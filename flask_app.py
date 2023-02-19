@@ -38,7 +38,6 @@ def homepage():
     # Let's get this user's CFBR info
     response = requests.get(f"{CFBR_REST_API}/player?player={username}")
     active_team = response.json()['active_team']['name']
-    total_turns = response.json()['stats']['totalTurns']
     current_stars = response.json()['ratings']['overall']
 
     # Enemy rogue or SPY!!!! Just give them someone to attack.
@@ -101,7 +100,6 @@ def homepage():
                 template_params = {
                     "username": username,
                     "current_stars": current_stars,
-                    "total_turns": total_turns,
                     "hoy": hoy,
                     "orders": existing_offers,
                     "confirm_url": CONFIRM_URL
@@ -124,7 +122,6 @@ def homepage():
                 template_params = {
                     "username": username,
                     "current_stars": current_stars,
-                    "total_turns": total_turns,
                     "hoy": hoy,
                     "orders": new_offers,
                     "confirm_url": CONFIRM_URL
@@ -141,7 +138,6 @@ def homepage():
             template_params = {
                 "username": username,
                 "current_stars": current_stars,
-                "total_turns": total_turns,
                 "hoy": hoy
             }
             log.warning(f"{username}: Hit the 'No Orders Loaded' page")
