@@ -12,6 +12,8 @@ body {
     background: #EDECEC;
     width: fit-content;
     padding: 10px;
+    max-width: 100%;
+    box-sizing: border-box;
     border-radius: 10px;
 }
 
@@ -33,9 +35,15 @@ a {
     text-decoration: underline;
     transition: color .2s ease-in-out;
 }
-a:hover{
+a:hover {
     color: #000000;
 }
+p {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+
 .stars {
     font-size: 3em;
     line-height: 1em;
@@ -44,28 +52,33 @@ a:hover{
     color: var(--Michigan-maize);
 }
 .accept_orders {
-    width: 200px;
-    height: 100px;
+    width: 90%;
+    height: auto;
+    padding: 10px;
     font-size: 1.5em;
     margin: .1em;
+/*    background: var(--Michigan-blue);
+    color: var(--Michigan-maize);
+    border-radius: 10px;
+    border: solid 1px var(--Michigan-maize);
+    outline: none;*/
 }
 
+
+
+#orders-container {
+    overflow-x: auto;
+}
 #orders {
     border-collapse: collapse;
-    width: 70%;
-    margin-left: 15%;
-    margin-right: 15%;
+    width: 100%;
 }
-
 #orders td, #orders th {
     border: 1px solid #ddd;
     padding: 8px;
 }
-
 #orders tr:nth-child(even){background-color: #f2f2f2;}
-
 #orders tr:hover {background-color: #ddd;}
-
 #orders th {
     padding-top: 12px;
     padding-bottom: 12px;
