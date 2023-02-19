@@ -37,6 +37,15 @@ def homepage():
     active_team = response.json()['active_team']['name']
     current_stars = response.json()['ratings']['overall']
 
+    CONFIRMATION_PAGE = "confirmation.html"
+    ORDER_PAGE = "order.html"
+    ERROR_PAGE = "error.html"
+    template = ERROR_PAGE
+    template_params = {}
+
+    # This is a shitty way to avoid endlessly nested if/else statements and I welcome a refactor.
+    stage = -1
+
     # Enemy rogue or SPY!!!! Just give them someone to attack.
     # TODO: This codepath is currently broken.  Don't rely on it until it gets fixed again.
     if active_team != THE_GOOD_GUYS:
@@ -50,15 +59,6 @@ def homepage():
         #   their choice)
         # 1) The user is showing up for the first time.  Create offers for them and display them.
         # (...and 0) There aren't any plans available yet to pick from.)
-
-        CONFIRMATION_PAGE = "confirmation.html"
-        ORDER_PAGE = "order.html"
-        ERROR_PAGE = "error.html"
-        template = ERROR_PAGE
-        template_params = {}
-
-        # This is a shitty way to avoid endlessly nested if/else statements and I welcome a refactor.
-        stage = -1
 
         if stage == -1:
             # Stage 3: This user has already been here and done that.
