@@ -144,6 +144,7 @@ def homepage():
             }
             log.warning(f"{username}: Hit the 'No Orders Loaded' page")
 
+    template_params["is_admin"] = Admin.is_admin(username)
     try:
         resp = make_response(render_template(template, **template_params))
         resp.set_cookie('a', request.cookies.get('a'))
