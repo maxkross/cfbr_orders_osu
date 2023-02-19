@@ -33,7 +33,6 @@ def homepage():
         return auth_resp_if_necessary
 
     confirmation = request.args.get('confirmed', default=None, type=str)
-    hoy = what_day_is_it()
 
     # Let's get this user's CFBR info
     response = requests.get(f"{CFBR_REST_API}/player?player={username}")
@@ -100,7 +99,7 @@ def homepage():
                 template_params = {
                     "username": username,
                     "current_stars": current_stars,
-                    "hoy": hoy,
+                    "hoy": what_day_is_it(),
                     "orders": existing_offers,
                     "confirm_url": CONFIRM_URL
                 }
@@ -122,7 +121,7 @@ def homepage():
                 template_params = {
                     "username": username,
                     "current_stars": current_stars,
-                    "hoy": hoy,
+                    "hoy": what_day_is_it(),
                     "orders": new_offers,
                     "confirm_url": CONFIRM_URL
                 }
@@ -138,7 +137,7 @@ def homepage():
             template_params = {
                 "username": username,
                 "current_stars": current_stars,
-                "hoy": hoy
+                "hoy": what_day_is_it()
             }
             log.warning(f"{username}: Hit the 'No Orders Loaded' page")
 
