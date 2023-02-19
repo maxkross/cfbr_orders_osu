@@ -48,7 +48,12 @@ def homepage():
     # Enemy rogue or SPY!!!! Just give them someone to attack.
     # TODO: This codepath is currently broken.  Don't rely on it until it gets fixed again.
     if active_team != THE_GOOD_GUYS:
-        order = Orders.get_foreign_order(active_team, CFBR_day(), CFBR_month())
+        # order = Orders.get_foreign_order(active_team, CFBR_day(), CFBR_month())
+        template = ERROR_PAGE
+        template_params = {
+            "username": username,
+            "error_message": f"Sorry, you'll need to join {THE_GOOD_GUYS} first."
+        }
     # Good guys get their assignments here
     else:
         # We now have three states, ordered in reverse chronological:
