@@ -143,7 +143,7 @@ def homepage():
 
     try:
         resp = make_response(render_template(template, **template_params))
-        resp.set_cookie('a', request.cookies.get('a').encode())
+        resp.set_cookie('a', request.cookies.get('a'))
     except Exception as e:
         error = "Go sign up for CFB Risk."
         log.error(f"{username},Reddit user who doesn't play CFBR tried to log in (???)")
