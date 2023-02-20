@@ -5,10 +5,13 @@
         <title>{% block title %} {% endblock %} - What Are My Orders?</title>
     </head>
     <body>
-        <section class="image-container">
-            <img src="{{url_for('static', filename='cfbr_wamo.png')}}">
-        </section>
-        {% block body %}
-        {% endblock %}
+        <div class="body-container">
+            <section class="image-container">
+                <img src="{{url_for('static', filename='cfbr_wamo.png')}}">
+            </section>
+            {% if is_admin: %}<p><a href='./admin'>Admin</a></p>{% endif %}
+            {% block body %}
+            {% endblock %}
+        </div>
     </body>
 </html>

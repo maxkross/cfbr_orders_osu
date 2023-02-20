@@ -5,7 +5,6 @@ from uuid import uuid4
 import urllib
 from datetime import datetime, timedelta
 from pytz import timezone
-import sqlite3
 
 from constants import *
 from cfbr_db import Db
@@ -32,19 +31,29 @@ def homepage():
     if auth_resp_if_necessary:
         return auth_resp_if_necessary
 
-    confirmation = request.args.get('confirmed', default=None, type=str)
-    hoy = what_day_is_it()
-
     # Let's get this user's CFBR info
     response = requests.get(f"{CFBR_REST_API}/player?player={username}")
     active_team = response.json()['active_team']['name']
-    total_turns = response.json()['stats']['totalTurns']
     current_stars = response.json()['ratings']['overall']
+
+    CONFIRMATION_PAGE = "confirmation.html"
+    ORDER_PAGE = "order.html"
+    ERROR_PAGE = "error.html"
+    template = ERROR_PAGE
+    template_params = {}
+
+    # This is a shitty way to avoid endlessly nested if/else statements and I welcome a refactor.
+    stage = -1
 
     # Enemy rogue or SPY!!!! Just give them someone to attack.
     # TODO: This codepath is currently broken.  Don't rely on it until it gets fixed again.
     if active_team != THE_GOOD_GUYS:
-        order = Orders.get_foreign_order(active_team, CFBR_day(), CFBR_month())
+        # order = Orders.get_foreign_order(active_team, CFBR_day(), CFBR_month())
+        template = ERROR_PAGE
+        template_params = {
+            "username": username,
+            "error_message": f"Sorry, you'll need to join {THE_GOOD_GUYS} first."
+        }
     # Good guys get their assignments here
     else:
         # We now have three states, ordered in reverse chronological:
@@ -54,15 +63,6 @@ def homepage():
         #   their choice)
         # 1) The user is showing up for the first time.  Create offers for them and display them.
         # (...and 0) There aren't any plans available yet to pick from.)
-
-        CONFIRMATION_PAGE = "confirmation.html"
-        ORDER_PAGE = "order.html"
-        ERROR_PAGE = "error.html"
-        template = ERROR_PAGE
-        template_params = {}
-
-        # This is a shitty way to avoid endlessly nested if/else statements and I welcome a refactor.
-        stage = -1
 
         if stage == -1:
             # Stage 3: This user has already been here and done that.
@@ -80,6 +80,7 @@ def homepage():
             # They're not in Stage 3.  Are they in stage 2, or did they make a choice?
             existing_offers = None
             confirmed_territory = None
+            confirmation = request.args.get('confirmed', default=None, type=str)
             if confirmation:
                 confirmed_territory = Orders.confirm_offer(username, CFBR_day(), CFBR_month(), confirmation)
 
@@ -101,8 +102,7 @@ def homepage():
                 template_params = {
                     "username": username,
                     "current_stars": current_stars,
-                    "total_turns": total_turns,
-                    "hoy": hoy,
+                    "hoy": what_day_is_it(),
                     "orders": existing_offers,
                     "confirm_url": CONFIRM_URL
                 }
@@ -124,8 +124,7 @@ def homepage():
                 template_params = {
                     "username": username,
                     "current_stars": current_stars,
-                    "total_turns": total_turns,
-                    "hoy": hoy,
+                    "hoy": what_day_is_it(),
                     "orders": new_offers,
                     "confirm_url": CONFIRM_URL
                 }
@@ -141,14 +140,14 @@ def homepage():
             template_params = {
                 "username": username,
                 "current_stars": current_stars,
-                "total_turns": total_turns,
-                "hoy": hoy
+                "hoy": what_day_is_it()
             }
             log.warning(f"{username}: Hit the 'No Orders Loaded' page")
 
+    template_params["is_admin"] = Admin.is_admin(username)
     try:
         resp = make_response(render_template(template, **template_params))
-        resp.set_cookie('a', request.cookies.get('a').encode())
+        resp.set_cookie('a', request.cookies.get('a'))
     except Exception as e:
         error = "Go sign up for CFB Risk."
         log.error(f"{username},Reddit user who doesn't play CFBR tried to log in (???)")
