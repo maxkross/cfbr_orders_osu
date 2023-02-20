@@ -35,7 +35,7 @@
         {% endif %}
     {% endfor %}
     {% if totals %}
-    <tfoot id="totals">
+    <tfoot>
         <tr>
             <td colspan="2">Totals</td>
             <td>{{totals.quota}}</td>
@@ -45,7 +45,6 @@
     </tfoot>
     {% endif %}
 </table>
-</div>
 {% else %}
     Orders don't seem to be loaded yet.
 {% endif %}
