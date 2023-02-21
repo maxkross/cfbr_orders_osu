@@ -86,3 +86,16 @@ p {
     background-color: var(--Michigan-blue);
     color: var(--Michigan-maize);
 }
+#orders #sumrow {
+    font-weight: bold;
+    background-color: var(--Michigan-maize);
+    color: var(--Michigan-blue);
+}
+#orders tfoot {
+    font-weight: bold;
+    background-color: var(--Michigan-blue);
+    color: var(--Michigan-maize);
+}
+#orders tfoot tr:hover{
+    background-color: inherit;
+}

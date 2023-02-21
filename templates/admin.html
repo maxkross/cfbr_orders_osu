@@ -7,24 +7,44 @@
 <div id="orders-container">
 {% if orders %}
 <table id="orders">
-    <tr>
-        <th>Territory</th>
-        <th>Tier</th>
-        <th>Quota</th>
-        <th>Assigned Stars</th>
-        <th>Percentage Complete</th>
-    </tr>
+    <thead>
+        <tr>
+            <th>Territory</th>
+            <th>Tier</th>
+            <th>Quota</th>
+            <th>Assigned Stars</th>
+            <th>Percentage Complete</th>
+        </tr>
+    </thead>
     {% for order in orders: %}
-    <tr>
-        <td>{{order.territory}}</td>
-        <td>{{order.tier}}</td>
-        <td>{{order.quota}}</td>
-        <td>{{order.assigned}}</td>
-        <td>{{order.display_pct}}</td>
-    </tr>
+        {% if order.sumrow %}
+            <tr id="sumrow">
+                <td colspan="2">Tier {{order.tier}}</td>
+                <td>{{order.quota}}</td>
+                <td>{{order.assigned}}</td>
+                <td>{{order.display_pct}}</td>
+            </tr>
+        {% else %}
+            <tr>
+                <td>{{order.territory}}</td>
+                <td>{{order.tier}}</td>
+                <td>{{order.quota}}</td>
+                <td>{{order.assigned}}</td>
+                <td>{{order.display_pct}}</td>
+            </tr>
+        {% endif %}
     {% endfor %}
+    {% if totals %}
+    <tfoot>
+        <tr>
+            <td colspan="2">Totals</td>
+            <td>{{totals.quota}}</td>
+            <td>{{totals.assigned}}</td>
+            <td>{{totals.display_pct}}</td>
+        </tr>
+    </tfoot>
+    {% endif %}
 </table>
-</div>
 {% else %}
     Orders don't seem to be loaded yet.
 {% endif %}
