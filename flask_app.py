@@ -23,24 +23,36 @@ app = Flask(__name__)
 ###############################################################
 
 
+CONFIRMATION_PAGE = "confirmation.html"
+ORDER_PAGE = "order.html"
+ERROR_PAGE = "error.html"
+
 @app.route('/')
 def homepage():
+    cookie = request.cookies.get('a')
     auth_resp_if_necessary, username = check_identity_or_auth(request)
 
     # The user needs to authenticate, short-circuit here.
     if auth_resp_if_necessary:
         return auth_resp_if_necessary
 
-    # Let's get this user's CFBR info
-    response = requests.get(f"{CFBR_REST_API}/player?player={username}")
-    active_team = response.json()['active_team']['name']
-    current_stars = response.json()['ratings']['overall']
+    template_params = {"username": username}
 
-    CONFIRMATION_PAGE = "confirmation.html"
-    ORDER_PAGE = "order.html"
-    ERROR_PAGE = "error.html"
-    template = ERROR_PAGE
-    template_params = {}
+    cfbr_api_user_response = requests.get(f"{CFBR_REST_API}/player?player={username}")
+    try:
+        cfbr_api_user_response.raise_for_status()
+        active_team = cfbr_api_user_response.json()['active_team']['name']
+        current_stars = cfbr_api_user_response.json()['ratings']['overall']
+    except requests.exceptions.HTTPError or AttributeError as e:
+        log.error(f"{username}: Reddit user who doesn't play CFBR tried to log in")
+        log.error(f"Exception: {e}")
+        template_params |= {
+            "error_message": f"Sorry, you'll need to join {THE_GOOD_GUYS} first.",
+            "link": "https://www.collegefootballrisk.com/"
+        }
+        return build_template_response(cookie, ERROR_PAGE, template_params)
+
+    template_params["is_admin"] = Admin.is_admin(username)
 
     # This is a shitty way to avoid endlessly nested if/else statements and I welcome a refactor.
     stage = -1
@@ -49,11 +61,10 @@ def homepage():
     # TODO: This codepath is currently broken.  Don't rely on it until it gets fixed again.
     if active_team != THE_GOOD_GUYS:
         # order = Orders.get_foreign_order(active_team, CFBR_day(), CFBR_month())
-        template = ERROR_PAGE
-        template_params = {
-            "username": username,
+        template_params |= {
             "error_message": f"Sorry, you'll need to join {THE_GOOD_GUYS} first."
         }
+        return build_template_response(cookie, ERROR_PAGE, template_params)
     # Good guys get their assignments here
     else:
         # We now have three states, ordered in reverse chronological:
@@ -69,12 +80,11 @@ def homepage():
             existing_move = Orders.user_already_moved(username, CFBR_day(), CFBR_month())
             if existing_move is not None:
                 stage = 3
-                template = CONFIRMATION_PAGE
-                template_params = {
-                    "username": username,
+                template_params |= {
                     "territory": existing_move
                 }
                 log.info(f"{username}: Showing them the move they previously made.")
+                return build_template_response(cookie, CONFIRMATION_PAGE, template_params)
 
         if stage == -1:
             # They're not in Stage 3.  Are they in stage 2, or did they make a choice?
@@ -87,19 +97,17 @@ def homepage():
             if confirmed_territory:
                 # They made a choice!  Our favorite.
                 stage = 2
-                template = CONFIRMATION_PAGE
-                template_params = {
-                    "username": username,
+                template_params |= {
                     "territory": confirmed_territory
                 }
                 log.info(f"{username}: Chose to move on {confirmed_territory}")
+                return build_template_response(cookie, CONFIRMATION_PAGE, template_params)
             else:
                 existing_offers = Orders.user_already_offered(username, CFBR_day(), CFBR_month())
 
             if existing_offers is not None and len(existing_offers) > 0:
                 stage = 2
-                template = ORDER_PAGE
-                template_params = {
+                template_params |= {
                     "username": username,
                     "current_stars": current_stars,
                     "hoy": what_day_is_it(),
@@ -107,6 +115,7 @@ def homepage():
                     "confirm_url": CONFIRM_URL
                 }
                 log.info(f"{username}: Showing them their previous offers.")
+                return build_template_response(cookie, ORDER_PAGE, template_params)
 
         if stage == -1:
             # I guess they're in Stage 1: Make them an offer
@@ -120,15 +129,14 @@ def homepage():
                     new_offers.append((new_offer_territories[i], offer_uuid))
 
                 stage = 1
-                template = ORDER_PAGE
-                template_params = {
-                    "username": username,
+                template_params |= {
                     "current_stars": current_stars,
                     "hoy": what_day_is_it(),
                     "orders": new_offers,
                     "confirm_url": CONFIRM_URL
                 }
                 log.info(f"{username}: Generated new offers.")
+                return build_template_response(cookie, ORDER_PAGE, template_params)
             else:
                 log.info(f"{username}: Tried to generate new offers and failed. Are the plans loaded for today?")
 
@@ -136,25 +144,25 @@ def homepage():
             # Nope sorry we're in stage 0: Ain't no orders available yet.  We'll use the order template
             # sans orders until we create a page with a sick meme telling the Strategists to hurry up.
             stage = 0
-            template = ORDER_PAGE
-            template_params = {
-                "username": username,
+            template_params |= {
                 "current_stars": current_stars,
                 "hoy": what_day_is_it()
             }
             log.warning(f"{username}: Hit the 'No Orders Loaded' page")
+            return build_template_response(cookie, ORDER_PAGE, template_params)
 
-    template_params["is_admin"] = Admin.is_admin(username)
-    try:
-        resp = make_response(render_template(template, **template_params))
-        resp.set_cookie('a', request.cookies.get('a'))
-    except Exception as e:
-        error = "Go sign up for CFB Risk."
-        log.error(f"{username},Reddit user who doesn't play CFBR tried to log in (???)")
-        log.error(f"   unknown,Exception while rendering for stage {stage}: {e}")
-        resp = make_response(render_template('error.html', username=username,
-                                                error_message=error,
-                                                link="https://www.collegefootballrisk.com/"))
+    log.error(f"{username},Reddit user who doesn't play CFBR tried to log in (???)")
+    log.error(f"   unknown,Exception while rendering for stage {stage}")
+    template_params |= {
+        "error_message": "Go sign up for CFB Risk.",
+        "link": "https://www.collegefootballrisk.com/"
+    }
+    return build_template_response(cookie, ERROR_PAGE, template_params)
+
+
+def build_template_response(cookie, template, template_params):
+    resp = make_response(render_template(template, **template_params))
+    resp.set_cookie('a', cookie)
     return resp
 
 
