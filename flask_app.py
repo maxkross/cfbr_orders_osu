@@ -47,20 +47,18 @@ def homepage():
         log.error(f"{username}: Reddit user who doesn't play CFBR tried to log in")
         log.error(f"Exception: {e}")
         template_params |= {
-            "error_message": f"Sorry, you'll need to join {THE_GOOD_GUYS} first.",
+            "error_message": f"Sorry, you'll need to sign up for CFB Risk and join {THE_GOOD_GUYS} first.",
             "link": "https://www.collegefootballrisk.com/"
         }
         return build_template_response(cookie, ERROR_PAGE, template_params)
 
     template_params["is_admin"] = Admin.is_admin(username)
 
-    # This is a shitty way to avoid endlessly nested if/else statements and I welcome a refactor.
-    stage = -1
-
     # Enemy rogue or SPY!!!! Just give them someone to attack.
-    # TODO: This codepath is currently broken.  Don't rely on it until it gets fixed again.
     if active_team != THE_GOOD_GUYS:
+        # TODO: This codepath is currently broken.  Don't rely on it until it gets fixed again.
         # order = Orders.get_foreign_order(active_team, CFBR_day(), CFBR_month())
+        log.info(f"{username}: Player on {active_team} tried to log in.")
         template_params |= {
             "error_message": f"Sorry, you'll need to join {THE_GOOD_GUYS} first."
         }
@@ -68,96 +66,70 @@ def homepage():
     # Good guys get their assignments here
     else:
         # We now have three states, ordered in reverse chronological:
-        # 3) The user has already accepted an order.  Show them the thank you screen, but remind them what (we think)
+        # 3) The user has already accepted an order.  Show them the thank-you screen, but remind them what (we think)
         #   they did
         # 2) The user has been offered a few options.  Retrieve those options and then display them (or confirm
         #   their choice)
         # 1) The user is showing up for the first time.  Create offers for them and display them.
-        # (...and 0) There aren't any plans available yet to pick from.)
+        # (...and 0) There aren't any plans available yet to pick from.
 
-        if stage == -1:
-            # Stage 3: This user has already been here and done that.
-            existing_move = Orders.user_already_moved(username, CFBR_day(), CFBR_month())
-            if existing_move is not None:
-                stage = 3
-                template_params |= {
-                    "territory": existing_move
-                }
-                log.info(f"{username}: Showing them the move they previously made.")
-                return build_template_response(cookie, CONFIRMATION_PAGE, template_params)
+        # Stage 3: This user has already been here and done that.
+        existing_move = Orders.user_already_moved(username, CFBR_day(), CFBR_month())
+        if existing_move is not None:
+            log.info(f"{username}: Showing them the move they previously made.")
+            template_params |= {"territory": existing_move}
+            return build_template_response(cookie, CONFIRMATION_PAGE, template_params)
 
-        if stage == -1:
-            # They're not in Stage 3.  Are they in stage 2, or did they make a choice?
-            existing_offers = None
-            confirmed_territory = None
-            confirmation = request.args.get('confirmed', default=None, type=str)
-            if confirmation:
-                confirmed_territory = Orders.confirm_offer(username, CFBR_day(), CFBR_month(), confirmation)
-
-            if confirmed_territory:
-                # They made a choice!  Our favorite.
-                stage = 2
-                template_params |= {
-                    "territory": confirmed_territory
-                }
-                log.info(f"{username}: Chose to move on {confirmed_territory}")
-                return build_template_response(cookie, CONFIRMATION_PAGE, template_params)
-            else:
-                existing_offers = Orders.user_already_offered(username, CFBR_day(), CFBR_month())
-
-            if existing_offers is not None and len(existing_offers) > 0:
-                stage = 2
-                template_params |= {
-                    "username": username,
-                    "current_stars": current_stars,
-                    "hoy": what_day_is_it(),
-                    "orders": existing_offers,
-                    "confirm_url": CONFIRM_URL
-                }
-                log.info(f"{username}: Showing them their previous offers.")
-                return build_template_response(cookie, ORDER_PAGE, template_params)
-
-        if stage == -1:
-            # I guess they're in Stage 1: Make them an offer
-            new_offer_territories = Orders.get_next_offers(CFBR_day(), CFBR_month(), current_stars)
-
-            if len(new_offer_territories) > 0:
-                new_offers = []
-                for i in range(len(new_offer_territories)):
-                    offer_uuid = Orders.write_new_offer(username, new_offer_territories[i],
-                        CFBR_day(), CFBR_month(), current_stars, i)
-                    new_offers.append((new_offer_territories[i], offer_uuid))
-
-                stage = 1
-                template_params |= {
-                    "current_stars": current_stars,
-                    "hoy": what_day_is_it(),
-                    "orders": new_offers,
-                    "confirm_url": CONFIRM_URL
-                }
-                log.info(f"{username}: Generated new offers.")
-                return build_template_response(cookie, ORDER_PAGE, template_params)
-            else:
-                log.info(f"{username}: Tried to generate new offers and failed. Are the plans loaded for today?")
-
-        if stage == -1:
-            # Nope sorry we're in stage 0: Ain't no orders available yet.  We'll use the order template
-            # sans orders until we create a page with a sick meme telling the Strategists to hurry up.
-            stage = 0
+        # They're not in Stage 3.  Are they in stage 2, or did they make a choice?
+        confirmed_territory = None
+        confirmation = request.args.get('confirmed', default=None, type=str)
+        if confirmation:
+            confirmed_territory = Orders.confirm_offer(username, CFBR_day(), CFBR_month(), confirmation)
+        if confirmed_territory:
+            # They made a choice!  Our favorite.
+            log.info(f"{username}: Chose to move on {confirmed_territory}")
+            template_params |= {"territory": confirmed_territory}
+            return build_template_response(cookie, CONFIRMATION_PAGE, template_params)
+        else:
+            existing_offers = Orders.user_already_offered(username, CFBR_day(), CFBR_month())
+        if existing_offers is not None and len(existing_offers) > 0:
+            log.info(f"{username}: Showing them their previous offers.")
             template_params |= {
+                "username": username,
                 "current_stars": current_stars,
-                "hoy": what_day_is_it()
+                "hoy": what_day_is_it(),
+                "orders": existing_offers,
+                "confirm_url": CONFIRM_URL
             }
-            log.warning(f"{username}: Hit the 'No Orders Loaded' page")
             return build_template_response(cookie, ORDER_PAGE, template_params)
 
-    log.error(f"{username},Reddit user who doesn't play CFBR tried to log in (???)")
-    log.error(f"   unknown,Exception while rendering for stage {stage}")
-    template_params |= {
-        "error_message": "Go sign up for CFB Risk.",
-        "link": "https://www.collegefootballrisk.com/"
-    }
-    return build_template_response(cookie, ERROR_PAGE, template_params)
+        # I guess they're in Stage 1: Make them an offer
+        new_offer_territories = Orders.get_next_offers(CFBR_day(), CFBR_month(), current_stars)
+        if len(new_offer_territories) > 0:
+            new_offers = []
+            for i in range(len(new_offer_territories)):
+                offer_uuid = Orders.write_new_offer(username, new_offer_territories[i],
+                                                    CFBR_day(), CFBR_month(), current_stars, i)
+                new_offers.append((new_offer_territories[i], offer_uuid))
+            log.info(f"{username}: Generated new offers.")
+            template_params |= {
+                "current_stars": current_stars,
+                "hoy": what_day_is_it(),
+                "orders": new_offers,
+                "confirm_url": CONFIRM_URL
+            }
+            return build_template_response(cookie, ORDER_PAGE, template_params)
+        else:
+            log.info(f"{username}: Tried to generate new offers and failed. Are the plans loaded for today?")
+
+        # Nope sorry we're in stage 0: Ain't no orders available yet.  We'll use the order template
+        # sans orders until we create a page with a sick meme telling the Strategists to hurry up.
+        log.warning(f"{username}: Hit the 'No Orders Loaded' page")
+        template_params |= {
+            "current_stars": current_stars,
+            "hoy": what_day_is_it()
+        }
+        return build_template_response(cookie, ORDER_PAGE, template_params)
 
 
 def build_template_response(cookie, template, template_params):
