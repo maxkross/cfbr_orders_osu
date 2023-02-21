@@ -52,16 +52,19 @@ def homepage():
         }
         return build_template_response(cookie, ERROR_PAGE, template_params)
 
-    template_params["is_admin"] = Admin.is_admin(username)
+    template_params |= {
+        "is_admin": Admin.is_admin(username),
+        "current_stars": current_stars,
+        "hoy": what_day_is_it(),
+        "confirm_url": CONFIRM_URL
+    }
 
     # Enemy rogue or SPY!!!! Just give them someone to attack.
     if active_team != THE_GOOD_GUYS:
         # TODO: This codepath is currently broken.  Don't rely on it until it gets fixed again.
         # order = Orders.get_foreign_order(active_team, CFBR_day(), CFBR_month())
         log.info(f"{username}: Player on {active_team} tried to log in.")
-        template_params |= {
-            "error_message": f"Sorry, you'll need to join {THE_GOOD_GUYS} first."
-        }
+        template_params |= {"error_message": f"Sorry, you'll need to join {THE_GOOD_GUYS} first."}
         return build_template_response(cookie, ERROR_PAGE, template_params)
     # Good guys get their assignments here
     else:
@@ -94,13 +97,7 @@ def homepage():
             existing_offers = Orders.user_already_offered(username, CFBR_day(), CFBR_month())
         if existing_offers is not None and len(existing_offers) > 0:
             log.info(f"{username}: Showing them their previous offers.")
-            template_params |= {
-                "username": username,
-                "current_stars": current_stars,
-                "hoy": what_day_is_it(),
-                "orders": existing_offers,
-                "confirm_url": CONFIRM_URL
-            }
+            template_params |= {"orders": existing_offers}
             return build_template_response(cookie, ORDER_PAGE, template_params)
 
         # I guess they're in Stage 1: Make them an offer
@@ -112,12 +109,7 @@ def homepage():
                                                     CFBR_day(), CFBR_month(), current_stars, i)
                 new_offers.append((new_offer_territories[i], offer_uuid))
             log.info(f"{username}: Generated new offers.")
-            template_params |= {
-                "current_stars": current_stars,
-                "hoy": what_day_is_it(),
-                "orders": new_offers,
-                "confirm_url": CONFIRM_URL
-            }
+            template_params |= {"orders": new_offers}
             return build_template_response(cookie, ORDER_PAGE, template_params)
         else:
             log.info(f"{username}: Tried to generate new offers and failed. Are the plans loaded for today?")
@@ -125,10 +117,6 @@ def homepage():
         # Nope sorry we're in stage 0: Ain't no orders available yet.  We'll use the order template
         # sans orders until we create a page with a sick meme telling the Strategists to hurry up.
         log.warning(f"{username}: Hit the 'No Orders Loaded' page")
-        template_params |= {
-            "current_stars": current_stars,
-            "hoy": what_day_is_it()
-        }
         return build_template_response(cookie, ORDER_PAGE, template_params)
 
 
