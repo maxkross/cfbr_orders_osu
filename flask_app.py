@@ -41,8 +41,6 @@ def homepage():
     cfbr_api_user_response = requests.get(f"{CFBR_REST_API}/player?player={username}")
     try:
         cfbr_api_user_response.raise_for_status()
-        active_team = cfbr_api_user_response.json()['active_team']['name']
-        current_stars = cfbr_api_user_response.json()['ratings']['overall']
     except requests.exceptions.HTTPError or AttributeError as e:
         log.error(f"{username}: Reddit user who doesn't play CFBR tried to log in")
         log.error(f"Exception: {e}")
@@ -52,6 +50,8 @@ def homepage():
         }
         return build_template_response(cookie, ERROR_PAGE, template_params)
 
+    active_team = cfbr_api_user_response.json()['active_team']['name']
+    current_stars = cfbr_api_user_response.json()['ratings']['overall']
     template_params |= {
         "is_admin": Admin.is_admin(username),
         "current_stars": current_stars,
