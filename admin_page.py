@@ -16,16 +16,16 @@ class Admin:
             log.warn(f"{username}: They don't belong here!  Sending 'em to the root.")
             return make_response(redirect('/'))
 
+        composite_orders = []
+        overall_totals = {
+            "quota": 0,
+            "assigned": 0,
+        }
         # You're in.  Let's tell you what's happening.
         orders = Orders.get_orders(hoy_d, hoy_m)
         if orders:
-
             cur_tier = -1
             running_totals = {
-                "quota": 0,
-                "assigned": 0,
-            }
-            overall_totals = {
                 "quota": 0,
                 "assigned": 0,
             }
@@ -33,7 +33,6 @@ class Admin:
             # We're duplicating the storage for the orders because a) it's small and b) it's easier to
             # understand building a second list vs. manipulating the length of an array that we're currently
             # looping over.  Blame Tapin.
-            composite_orders = []
             for order in orders:
                 # If necessary, put a summation row on the list and reset the running totals
                 # NB we're not going to try to display tiers that have no territories assigned
@@ -78,8 +77,6 @@ class Admin:
 
             if overall_totals['quota'] > 0:
                 overall_totals['display_pct'] = '{:.1%}'.format(overall_totals['assigned'] / overall_totals['quota'])
-
-
         return make_response(render_template('admin.html',
                                              orders=composite_orders,
                                              totals=overall_totals))
@@ -101,5 +98,4 @@ class Admin:
 
         if roleid_row is None or roleid_row[0] < 4:
             return False
-
         return True
