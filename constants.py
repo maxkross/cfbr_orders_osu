@@ -13,7 +13,7 @@ CONFIRM_URL = f"{BASE_URL}/?confirmed="
 CFBR_REST_API = "https://collegefootballrisk.com/api"
 CFBR_MOVE_DEEPLINK = "https://collegefootballrisk.com/#MyMove"
 
-REDDIT_AUTH_URI = "https://old.reddit.com/api/v1/authorize"
+REDDIT_AUTH_URI = "https://ssl.reddit.com/api/v1/authorize"
 REDDIT_ACCOUNT_URI = "https://oauth.reddit.com/api/v1/me"
 REDDIT_TOKEN_URI = "https://ssl.reddit.com/api/v1/access_token"
 
