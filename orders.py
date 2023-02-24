@@ -266,7 +266,8 @@ class Orders:
                 AND tier=?
         '''
         res = Db.get_db().execute(query, (hoy_m, hoy_d, tier))
-        quota = res.fetchone()[0]
+        # We'll always get a tuple back, but if it's (None,) we need to coerce that to zero
+        quota = res.fetchone()[0] or 0
         res.close()
 
         # Next, get the assigned stars total
@@ -289,7 +290,8 @@ class Orders:
                     )
         '''
         res = Db.get_db().execute(query, (hoy_m, hoy_d, tier))
-        assigned = res.fetchone()[0]
+        # We'll always get a tuple back, but if it's (None,) we need to coerce that to zero
+        assigned = res.fetchone()[0] or 0
         res.close()
 
         return (quota, assigned)
@@ -316,7 +318,8 @@ class Orders:
             )
         '''
         res = Db.get_db().execute(query, (hoy_m, hoy_d))
-        quota = res.fetchone()[0]
+        # We'll always get a tuple back, but if it's (None,) we need to coerce that to zero
+        quota = res.fetchone()[0] or 0
         res.close()
 
         # Next, get the assigned stars total
@@ -338,7 +341,8 @@ class Orders:
                     )
         '''
         res = Db.get_db().execute(query, (hoy_m, hoy_d))
-        assigned = res.fetchone()[0]
+        # We'll always get a tuple back, but if it's (None,) we need to coerce that to zero
+        assigned = res.fetchone()[0] or 0
         res.close()
 
         return (quota, assigned)
