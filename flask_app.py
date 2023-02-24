@@ -122,7 +122,8 @@ def homepage():
 
 def build_template_response(cookie, template, template_params):
     resp = make_response(render_template(template, **template_params))
-    resp.set_cookie('a', cookie)
+    if cookie:
+        resp.set_cookie('a', cookie)
     return resp
 
 
@@ -138,10 +139,16 @@ def reddit_callback():
         abort(403)
     code = request.args.get('code')
     access_token = get_token(code)
+    if access_token:
+        response = make_response(redirect('/'))
+        response.set_cookie('a', access_token.encode())
+        return response
+    template_params = {
+        "error_message": f"Sorry, there was a problem authenticating you. Please contact the devs on Discord.",
+        "link": "https://discord.gg/xTqU2UmmU5"
+    }
+    return build_template_response(None, ERROR_PAGE, template_params)
 
-    response = make_response(redirect('/'))
-    response.set_cookie('a', access_token.encode())
-    return response
 
 
 @app.route('/admin')
@@ -261,6 +268,13 @@ def get_token(code):
                              headers={'User-agent': 'CFB Risk Orders'},
                              data=post_data)
     token_json = response.json()
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        log.error(f"Failed to get Reddit access token.")
+        log.error(f"{token_json=}")
+        log.error(f"Exception: {e}")
+        return
     return token_json['access_token']
 
 
