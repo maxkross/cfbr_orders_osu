@@ -248,9 +248,9 @@ class Orders:
 
     @staticmethod
     def get_day_and_tier_totals(hoy_d, hoy_m, tier):
-        # For the record: We could do this in a single query, but taht makes the logic much more
+        # For the record: We could do this in a single query, but that makes the logic much more
         # difficult to read and to maintain.  So I'm splitting it up so that you don't have to
-        # be an SQL expert to understand it.  Not that this is absolutely going to be a slower
+        # be an SQL expert to understand it.  Note that this is absolutely going to be a slower
         # overall process than doing it in a single query, but we're not exactly working with
         # BiG DaTa here.
 
