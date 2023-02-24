@@ -16,46 +16,34 @@ class Admin:
             log.warn(f"{username}: They don't belong here!  Sending 'em to the root.")
             return make_response(redirect('/'))
 
+        overall_totals = {
+            "quota": 0,
+            "assigned": 0,
+            "display_pct": "0%"
+        }
+        composite_orders = []
+
         # You're in.  Let's tell you what's happening.
         orders = Orders.get_orders(hoy_d, hoy_m)
         if orders:
-
             cur_tier = -1
-            running_totals = {
-                "quota": 0,
-                "assigned": 0,
-            }
-            overall_totals = {
-                "quota": 0,
-                "assigned": 0,
-            }
 
             # We're duplicating the storage for the orders because a) it's small and b) it's easier to
             # understand building a second list vs. manipulating the length of an array that we're currently
             # looping over.  Blame Tapin.
-            composite_orders = []
             for order in orders:
                 # If necessary, put a summation row on the list and reset the running totals
                 # NB we're not going to try to display tiers that have no territories assigned
-                if order['tier'] != cur_tier and cur_tier > -1 and running_totals['quota'] > 0:
-                    composite_orders.append({
-                        "sumrow": True,
-                        "tier": cur_tier,
-                        "quota": running_totals['quota'],
-                        "assigned": running_totals['assigned'],
-                        "display_pct": '{:.1%}'.format(running_totals['assigned'] / running_totals['quota'])
-                    })
-
-                    running_totals = {
-                        "quota": 0,
-                        "assigned": 0,
-                    }
-
-                # Make a note of the quota & assigned for both the running and overall totals
-                running_totals['quota'] += order['quota']
-                running_totals['assigned'] += order['assigned']
-                overall_totals['quota'] += order['quota']
-                overall_totals['assigned'] += order['assigned']
+                if order['tier'] != cur_tier and cur_tier > -1:
+                    quota, assigned = Orders.get_day_and_tier_totals(hoy_d, hoy_m, cur_tier)
+                    if quota > 0:
+                        composite_orders.append({
+                            "sumrow": True,
+                            "tier": cur_tier,
+                            "quota": quota,
+                            "assigned": assigned,
+                            "display_pct": '{:.1%}'.format(assigned / quota)
+                        })
 
                 # Format the display, since we don't need infinite precision
                 order['display_pct'] = '{:.1%}'.format(order['pct_complete'])
@@ -65,20 +53,22 @@ class Admin:
 
                 cur_tier = order['tier']
 
-            # Now that we're done, if we had anything to show then we still have the tier sum row
-            # and the overall totals to display
-            if running_totals['quota'] > 0:
+            # Now that we're done, we have to put out the final tier total and the overall total
+            quota, assigned = Orders.get_day_and_tier_totals(hoy_d, hoy_m, cur_tier)
+            if quota > 0:
                 composite_orders.append({
                     "sumrow": True,
                     "tier": cur_tier,
-                    "quota": running_totals['quota'],
-                    "assigned": running_totals['assigned'],
-                    "display_pct": '{:.1%}'.format(running_totals['assigned'] / running_totals['quota'])
+                    "quota": quota,
+                    "assigned": assigned,
+                    "display_pct": '{:.1%}'.format(assigned / quota)
                 })
 
-            if overall_totals['quota'] > 0:
-                overall_totals['display_pct'] = '{:.1%}'.format(overall_totals['assigned'] / overall_totals['quota'])
-
+            total_quota, total_assigned = Orders.get_day_totals(hoy_d, hoy_m)
+            if total_quota > 0:
+                overall_totals['quota'] = total_quota
+                overall_totals['assigned'] = total_assigned
+                overall_totals['display_pct'] = '{:.1%}'.format(total_assigned / total_quota)
 
         return make_response(render_template('admin.html',
                                              orders=composite_orders,

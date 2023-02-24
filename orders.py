@@ -79,7 +79,7 @@ class Orders:
                 WHERE
                     o.accepted=TRUE
                 GROUP BY
-                    p.territory, p.season, p.day
+                    p.territory, p.season, p.day, p.tier
             )
             WHERE
                 season = ?
@@ -245,3 +245,100 @@ class Orders:
             return None if assigned_row is None else assigned_row
 
         return None
+
+    @staticmethod
+    def get_day_and_tier_totals(hoy_d, hoy_m, tier):
+        # For the record: We could do this in a single query, but taht makes the logic much more
+        # difficult to read and to maintain.  So I'm splitting it up so that you don't have to
+        # be an SQL expert to understand it.  Not that this is absolutely going to be a slower
+        # overall process than doing it in a single query, but we're not exactly working with
+        # BiG DaTa here.
+
+        # First: Get the quota total for the tier
+        query = '''
+            SELECT
+                SUM(quota) as quota
+            FROM
+                plans
+            WHERE
+                season=?
+                AND day=?
+                AND tier=?
+        '''
+        res = Db.get_db().execute(query, (hoy_m, hoy_d, tier))
+        quota = res.fetchone()[0]
+        res.close()
+
+        # Next, get the assigned stars total
+        query = '''
+            SELECT
+                SUM(stars) AS stars
+            FROM
+                orders o
+            WHERE
+                season=?
+                AND day=?
+                AND accepted=TRUE
+                AND territory IN (
+                    SELECT territory
+                    FROM plans p
+                    WHERE
+                        p.season=o.season
+                        AND p.day=o.day
+                        AND p.tier=?
+                    )
+        '''
+        res = Db.get_db().execute(query, (hoy_m, hoy_d, tier))
+        assigned = res.fetchone()[0]
+        res.close()
+
+        return (quota, assigned)
+
+    @staticmethod
+    def get_day_totals(hoy_d, hoy_m):
+        # See the note on get_day_and_tier_totals for the reason why this is done as two separate
+        # queries.
+
+        # First: Get the quota total for the day.  This would look nicer if SUM(MAX(x)) worked.
+        query = '''
+            SELECT
+                SUM(quota)
+            FROM (
+                SELECT
+                    MAX(quota) as quota
+                FROM
+                    plans
+                WHERE
+                    season=?
+                    AND day=?
+                GROUP BY
+                    territory
+            )
+        '''
+        res = Db.get_db().execute(query, (hoy_m, hoy_d))
+        quota = res.fetchone()[0]
+        res.close()
+
+        # Next, get the assigned stars total
+        query = '''
+            SELECT
+                SUM(stars) AS stars
+            FROM
+                orders o
+            WHERE
+                season=?
+                AND day=?
+                AND accepted=TRUE
+                AND territory IN (
+                    SELECT territory
+                    FROM plans p
+                    WHERE
+                        p.season=o.season
+                        AND p.day=o.day
+                    )
+        '''
+        res = Db.get_db().execute(query, (hoy_m, hoy_d))
+        assigned = res.fetchone()[0]
+        res.close()
+
+        return (quota, assigned)
