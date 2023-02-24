@@ -16,13 +16,12 @@ class Admin:
             log.warn(f"{username}: They don't belong here!  Sending 'em to the root.")
             return make_response(redirect('/'))
 
+        composite_orders = []
         overall_totals = {
             "quota": 0,
             "assigned": 0,
             "display_pct": "0%"
         }
-        composite_orders = []
-
         # You're in.  Let's tell you what's happening.
         orders = Orders.get_orders(hoy_d, hoy_m)
         if orders:
@@ -91,5 +90,4 @@ class Admin:
 
         if roleid_row is None or roleid_row[0] < 4:
             return False
-
         return True
