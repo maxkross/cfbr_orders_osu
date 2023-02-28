@@ -186,6 +186,19 @@ def admin_page():
 
     return Admin.build_page(request, username, CFBR_day(), CFBR_month())
 
+@app.route('/upload', methods=["GET", "POST"])
+def upload_page():
+    auth_resp_if_necessary, username = check_identity_or_auth(request)
+
+    # The user needs to authenticate, short-circuit here.
+    if auth_resp_if_necessary:
+        return auth_resp_if_necessary
+
+    if
+
+    return Admin.build_upload_page(request, username, CFBR_day(), CFBR_month())
+
+
 @app.teardown_appcontext
 def close_connection(exception):
     Db.close_connection(exception)

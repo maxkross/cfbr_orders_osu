@@ -74,6 +74,17 @@ class Admin:
                                              totals=overall_totals))
 
     @staticmethod
+    def build_upload_page(request, username, hoy_d, hoy_m):
+        log.info(f"{username}: Admin upload page request")
+        # First things first: are you allowed to be here?
+        if not Admin.is_admin(username):
+            log.warn(f"{username}: They don't belong here!  Sending 'em to the root.")
+            return make_response(redirect('/'))
+
+
+
+
+    @staticmethod
     def is_admin(user):
         query = '''
             SELECT
