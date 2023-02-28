@@ -19,10 +19,15 @@
     {% for order in orders: %}
         {% if order.sumrow %}
             <tr id="sumrow">
-                <td colspan="2">Tier {{order.tier}}</td>
+                <td colspan="2" rowspan="2">Tier {{order.tier}}</td>
                 <td>{{order.quota}}</td>
                 <td>{{order.assigned}}</td>
                 <td>{{order.display_pct}}</td>
+            </tr>
+            <tr id="sumrow">
+                <td>{{order.nterritories}}<br/>territories</td>
+                <td>{{order.ncompleted}}<br/>completed</td>
+                <td>{{order.completed_pct}}</td>
             </tr>
         {% else %}
             <tr>

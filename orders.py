@@ -346,3 +346,37 @@ class Orders:
         res.close()
 
         return (quota, assigned)
+
+    @staticmethod
+    def get_tier_territory_summary(hoy_d, hoy_m, tier):
+        query = '''
+            SELECT
+                t.name,
+                p.quota,
+                SUM(o.stars) AS assigned,
+                SUM(o.stars) / CAST(p.quota AS REAL) AS pct
+            FROM
+                plans p INNER JOIN orders o ON (
+                    p.season=o.season
+                    AND p.day=o.day
+                    AND p.territory=o.territory
+                    AND o.accepted=TRUE
+                ) INNER JOIN territory t ON (
+                    p.territory=t.id
+                )
+            WHERE
+                p.season=?
+                AND p.day=?
+                AND p.tier=?
+            GROUP BY
+                t.name
+            ORDER BY
+                pct ASC;
+        '''
+        res = Db.get_db().execute(query, (hoy_m, hoy_d, tier))
+        tary = res.fetchall()
+        res.close()
+
+        nterritories = len(tary) or 0
+        ncompleted = len(list(filter(lambda x: x[3] >= 1, tary))) or 0
+        return (nterritories, ncompleted)

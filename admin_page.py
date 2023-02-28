@@ -35,13 +35,17 @@ class Admin:
                 # NB we're not going to try to display tiers that have no territories assigned
                 if order['tier'] != cur_tier and cur_tier > -1:
                     quota, assigned = Orders.get_day_and_tier_totals(hoy_d, hoy_m, cur_tier)
+                    nterritories, ncompleted = Orders.get_tier_territory_summary(hoy_d, hoy_m, cur_tier)
                     if quota > 0:
                         composite_orders.append({
                             "sumrow": True,
                             "tier": cur_tier,
                             "quota": quota,
                             "assigned": assigned,
-                            "display_pct": '{:.1%}'.format(assigned / quota)
+                            "display_pct": '{:.1%}'.format(assigned / quota),
+                            "nterritories": nterritories,
+                            "ncompleted": ncompleted,
+                            "completed_pct": '{:.1%}'.format(ncompleted / nterritories)
                         })
 
                 # Format the display, since we don't need infinite precision
@@ -54,13 +58,17 @@ class Admin:
 
             # Now that we're done, we have to put out the final tier total and the overall total
             quota, assigned = Orders.get_day_and_tier_totals(hoy_d, hoy_m, cur_tier)
+            nterritories, ncompleted = Orders.get_tier_territory_summary(hoy_d, hoy_m, cur_tier)
             if quota > 0:
                 composite_orders.append({
                     "sumrow": True,
                     "tier": cur_tier,
                     "quota": quota,
                     "assigned": assigned,
-                    "display_pct": '{:.1%}'.format(assigned / quota)
+                    "display_pct": '{:.1%}'.format(assigned / quota),
+                    "nterritories": nterritories,
+                    "ncompleted": ncompleted,
+                    "completed_pct": '{:.1%}'.format(ncompleted / nterritories)
                 })
 
             total_quota, total_assigned = Orders.get_day_totals(hoy_d, hoy_m)
