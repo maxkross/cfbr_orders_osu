@@ -356,7 +356,7 @@ class Orders:
                 SUM(o.stars) AS assigned,
                 SUM(o.stars) / CAST(p.quota AS REAL) AS pct
             FROM
-                plans p INNER JOIN orders o ON (
+                plans p LEFT JOIN orders o ON (
                     p.season=o.season
                     AND p.day=o.day
                     AND p.territory=o.territory
@@ -378,5 +378,8 @@ class Orders:
         res.close()
 
         nterritories = len(tary) or 0
-        ncompleted = len(list(filter(lambda x: x[3] >= 1, tary))) or 0
+        # In cases where the LEFT JOIN produces nothing in orders (eg, territory has no assigned orders)
+        # we need to cast the percentage to an int.  Since NoneType isn't directly castable, we need
+        # to resort to `int(x[3] or 0)`.
+        ncompleted = len(list(filter(lambda x: int(x[3] or 0) >= 1, tary))) or 0
         return (nterritories, ncompleted)
