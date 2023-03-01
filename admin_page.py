@@ -34,15 +34,7 @@ class Admin:
                 # If necessary, put a summation row on the list and reset the running totals
                 # NB we're not going to try to display tiers that have no territories assigned
                 if order['tier'] != cur_tier and cur_tier > -1:
-                    quota, assigned = Orders.get_day_and_tier_totals(hoy_d, hoy_m, cur_tier)
-                    if quota > 0:
-                        composite_orders.append({
-                            "sumrow": True,
-                            "tier": cur_tier,
-                            "quota": quota,
-                            "assigned": assigned,
-                            "display_pct": '{:.1%}'.format(assigned / quota)
-                        })
+                    composite_orders.append(display_sum_row(hoy_d, hoy_m, cur_tier))
 
                 # Format the display, since we don't need infinite precision
                 order['display_pct'] = '{:.1%}'.format(order['pct_complete'])
@@ -53,15 +45,7 @@ class Admin:
                 cur_tier = order['tier']
 
             # Now that we're done, we have to put out the final tier total and the overall total
-            quota, assigned = Orders.get_day_and_tier_totals(hoy_d, hoy_m, cur_tier)
-            if quota > 0:
-                composite_orders.append({
-                    "sumrow": True,
-                    "tier": cur_tier,
-                    "quota": quota,
-                    "assigned": assigned,
-                    "display_pct": '{:.1%}'.format(assigned / quota)
-                })
+            composite_orders.append(display_sum_row(hoy_d, hoy_m, cur_tier))
 
             total_quota, total_assigned = Orders.get_day_totals(hoy_d, hoy_m)
             if total_quota > 0:
@@ -91,3 +75,18 @@ class Admin:
         if roleid_row is None or roleid_row[0] < 4:
             return False
         return True
+
+def display_sum_row(hoy_d, hoy_m, tier):
+    quota, assigned = Orders.get_day_and_tier_totals(hoy_d, hoy_m, tier)
+    nterritories, ncompleted = Orders.get_tier_territory_summary(hoy_d, hoy_m, tier)
+    if quota > 0:
+        return {
+            "sumrow": True,
+            "tier": tier,
+            "quota": quota,
+            "assigned": assigned,
+            "display_pct": '{:.1%}'.format(assigned / quota),
+            "nterritories": nterritories,
+            "ncompleted": ncompleted,
+            "completed_pct": '{:.1%}'.format(ncompleted / nterritories)
+        }
