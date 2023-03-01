@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS plans (
     territory INTEGER NOT NULL,
     tier INTEGER,
     quota INTEGER,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
@@ -48,6 +49,7 @@ CREATE TABLE IF NOT EXISTS orders (
     stars INTEGER,
     accepted BOOLEAN DEFAULT FALSE,
     uuid TEXT NOT NULL UNIQUE,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
@@ -62,6 +64,7 @@ CREATE TABLE IF NOT EXISTS offers (
     stars INTEGER NOT NULL,
     rank INTEGER NOT NULL DEFAULT 0,
     uuid TEXT NOT NULL UNIQUE,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
