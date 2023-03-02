@@ -22,8 +22,17 @@ class Admin:
             "assigned": 0,
             "display_pct": "0%"
         }
+
+        # What day did you request?
+        elegido_m, elegido_d = (hoy_m, hoy_d)
+        display_date = request.args.get('date', default=None, type=str)
+        if display_date:
+            # This next line could go bad for a number of reasons.  It's an admin page,
+            # I'm going to assume nobody's intentionally trying to break it.
+            elegido_m, elegido_d = [int(x) for x in display_date.split('/')]
+
         # You're in.  Let's tell you what's happening.
-        orders = Orders.get_orders(hoy_d, hoy_m)
+        orders = Orders.get_orders(elegido_d, elegido_m)
         if orders:
             cur_tier = -1
 
@@ -34,7 +43,7 @@ class Admin:
                 # If necessary, put a summation row on the list and reset the running totals
                 # NB we're not going to try to display tiers that have no territories assigned
                 if order['tier'] != cur_tier and cur_tier > -1:
-                    composite_orders.append(display_sum_row(hoy_d, hoy_m, cur_tier))
+                    composite_orders.append(display_sum_row(elegido_d, elegido_m, cur_tier))
 
                 # Format the display, since we don't need infinite precision
                 order['display_pct'] = '{:.1%}'.format(order['pct_complete'])
@@ -45,17 +54,25 @@ class Admin:
                 cur_tier = order['tier']
 
             # Now that we're done, we have to put out the final tier total and the overall total
-            composite_orders.append(display_sum_row(hoy_d, hoy_m, cur_tier))
+            composite_orders.append(display_sum_row(elegido_d, elegido_m, cur_tier))
 
-            total_quota, total_assigned = Orders.get_day_totals(hoy_d, hoy_m)
+            total_quota, total_assigned = Orders.get_day_totals(elegido_d, elegido_m)
             if total_quota > 0:
                 overall_totals['quota'] = total_quota
                 overall_totals['assigned'] = total_assigned
                 overall_totals['display_pct'] = '{:.1%}'.format(total_assigned / total_quota)
 
+        dropdown_dates = populate_date_dropdown()
+        pagedate = f"{elegido_m}/{elegido_d}"
+        # If orders aren't loaded yet, we need to cheat with the dropdown_dates
+        if pagedate not in dropdown_dates:
+            dropdown_dates.append(pagedate)
+
         return make_response(render_template('admin.html',
                                              orders=composite_orders,
-                                             totals=overall_totals))
+                                             totals=overall_totals,
+                                             dates=dropdown_dates,
+                                             pagedate=pagedate))
 
     @staticmethod
     def is_admin(user):
@@ -90,3 +107,15 @@ def display_sum_row(hoy_d, hoy_m, tier):
             "ncompleted": ncompleted,
             "completed_pct": '{:.1%}'.format(ncompleted / nterritories)
         }
+
+def populate_date_dropdown():
+    query = '''
+        SELECT DISTINCT season, day
+        FROM plans
+        ORDER BY season, day;
+    '''
+    res = Db.get_db().execute(query)
+    dropdown_values = [f"{x[0]}/{x[1]}" for x in res.fetchall()]
+    res.close()
+
+    return dropdown_values
