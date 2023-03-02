@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 
-sqlite3 files/cfbrisk.db <<EOF
+DBFILE=files/cfbrisk.db
+
+if [ -f $DBFILE ]; then
+    BACKUP=${DBFILE}.$(date +%s)
+    echo "Backing up (moving) existing $DBFILE to $BACKUP..."
+    mv $DBFILE $BACKUP
+fi
+
+echo "Creating $DBFILE..."
+
+sqlite3 $DBFILE <<EOF
 
 BEGIN TRANSACTION;
 
@@ -314,3 +324,5 @@ INSERT INTO users VALUES(9,"Belgara",6);
 COMMIT;
 
 EOF
+
+echo "Done"

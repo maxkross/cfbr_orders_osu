@@ -1,5 +1,9 @@
+#!/usr/bin/env python
+
 import argparse
 import os
+import shutil
+import time
 import re
 from constants import DB
 import sqlite3
@@ -9,8 +13,21 @@ parser.add_argument('file', help="Name of the orders file to ingest")
 parser.add_argument('--db', help="Path to the database [Default is from .env]", default=DB)
 parser.add_argument('--season', help="The season to ingest into [Default is assumed from filename]")
 parser.add_argument('--day', help="The day to ingest into [Default is assumed from filename]")
+parser.add_argument('--backup', default=True, help="Back up the database file [Default is TRUE]", action='store_true')
+parser.add_argument('--no-backup', dest='backup', help="...or not", action='store_false')
 
 args = parser.parse_args()
+
+if args.backup:
+    backup = f"{DB}.{int(time.time())}"
+    print()
+    print(f"Backing up {DB} to {backup}...")
+    print()
+    shutil.copy(DB, backup)
+else:
+    print()
+    print("WARNING: No backup of the database is being created!")
+    print()
 
 db = sqlite3.connect(args.db)
 
