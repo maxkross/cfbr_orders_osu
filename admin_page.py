@@ -66,7 +66,7 @@ class Admin:
         pagedate = f"{elegido_m}/{elegido_d}"
         # If orders aren't loaded yet, we need to cheat with the dropdown_dates
         if pagedate not in dropdown_dates:
-            dropdown_dates.append(pagedate)
+            dropdown_dates.insert(0, pagedate)
 
         return make_response(render_template('admin.html',
                                              orders=composite_orders,
@@ -117,5 +117,10 @@ def populate_date_dropdown():
     res = Db.get_db().execute(query)
     dropdown_values = [f"{x[0]}/{x[1]}" for x in res.fetchall()]
     res.close()
+
+    # Since we're more likely to be using dates that are recent, let's invert the order.  Doing
+    # this here instead of in the SQL so that a) it's explicit that this was a choice; and b) to
+    # make it trivial to go back when I change my mind.
+    dropdown_values.reverse()
 
     return dropdown_values
