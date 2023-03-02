@@ -53,6 +53,9 @@ query = '''
 
 with open(fname, "r") as input:
     for line in input:
+        if len(line.strip()) == 0 or line.startswith('#'):
+            continue
+
         tname, tier, quota = line.strip().split(',')
         try:
             db.execute(query, (season, day, tname, tier, quota))
