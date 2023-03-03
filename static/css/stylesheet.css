@@ -108,3 +108,22 @@ button {
     font-size: 18px;
     border-radius: 5px;
 }
+
+.row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100%;
+    flex: 1;
+}
+
+.territory-list {
+    list-style-type: none;
+    text-align: left;
+}

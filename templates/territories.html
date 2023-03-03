@@ -1,0 +1,51 @@
+{% extends 'index.html' %}
+
+{% block title %}Territories{% endblock %}
+
+{% block body %}
+<p><a href='./'>Home</a> | <a href='./admin'>Admin</a> </p>
+{% if dates %}
+<p>
+<div id="dates_dropdown">
+    <label for="date">View date:</label>
+    <select name="date" id="date" onchange="loadDate(this.value)">
+        {% for d in dates: %}
+            <option value="{{d}}" {% if d == pagedate %} selected {% endif %}>{{d}}</option>
+        {% endfor %}
+    </select>
+</div>
+</p>
+{% endif %}
+<div id="territories-container" class="flex-container">
+{% if defend or attack %}
+<div class="row">
+    <div class="column">
+        <p>Defend!</p>
+        <ul class="territory-list">
+            {% for t in defend %}
+                <li>{{t.name}}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="column">
+        <p>Attack!</p>
+        <ul class="territory-list">
+            {% for t in attack %}
+                <li>{{t.name}} ({{t.owner}}}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+</table>
+{% else %}
+    Sorry, not sure what happened.  Contact @Hackers on the Discord.
+{% endif %}
+</div>
+
+<script>
+function loadDate(value) {
+    window.location.assign(window.location.pathname + '?date='+value);
+}
+</script>
+
+{% endblock %}

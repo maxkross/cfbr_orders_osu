@@ -2,6 +2,9 @@ from flask import make_response, redirect, render_template
 from cfbr_db import Db
 from logger import Logger
 from orders import Orders
+from cfbr_api import CfbrApi
+from constants import THE_GOOD_GUYS
+
 
 
 log = Logger.getLogger(__name__)
@@ -73,6 +76,38 @@ class Admin:
                                              totals=overall_totals,
                                              dates=dropdown_dates,
                                              pagedate=pagedate))
+
+    @staticmethod
+    def build_territory_page(request, username, hoy_d, hoy_m):
+        log.info(f"{username}: Admin territory page request")
+        # First things first: are you allowed to be here?
+        if not Admin.is_admin(username):
+            log.warn(f"{username}: They don't belong here!  Sending 'em to the root.")
+            return make_response(redirect('/'))
+
+        # We really ought to cache this.  Shame Tapin for not doing so yet because Krrrrsten hurt her wrist.
+        cur_turn = CfbrApi.get_cur_turn()
+        # One of these days we should reconcile our (day, season) ordering
+        cur_territories = CfbrApi.get_territories(cur_turn[1], cur_turn[0])
+
+        good_guy_territories = list(filter(lambda x: x['owner'] == THE_GOOD_GUYS, cur_territories))
+        enemy_targets = []
+        enemy_targets_with_owners = []
+
+        for us in good_guy_territories:
+            for them in us['neighbors']:
+                if them['owner'] != us['owner'] and them['name'] not in enemy_targets:
+                    enemy_targets.append(them['name'])
+                    enemy_targets_with_owners.append({
+                        "name": them['name'],
+                        "owner": them['owner']
+                    })
+        enemy_targets_with_owners.sort(key=lambda x: x['owner'])
+
+        return make_response(render_template('territories.html',
+                                             defend=good_guy_territories,
+                                             attack=enemy_targets_with_owners))
+
 
     @staticmethod
     def is_admin(user):
