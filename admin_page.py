@@ -91,6 +91,8 @@ class Admin:
         cur_territories = CfbrApi.get_territories(cur_turn[1], cur_turn[0])
 
         good_guy_territories = list(filter(lambda x: x['owner'] == THE_GOOD_GUYS, cur_territories))
+        good_guy_territories.sort(key=lambda x: x['name'])
+
         enemy_targets = []
         enemy_targets_with_owners = []
 
@@ -102,7 +104,7 @@ class Admin:
                         "name": them['name'],
                         "owner": them['owner']
                     })
-        enemy_targets_with_owners.sort(key=lambda x: x['owner'])
+        enemy_targets_with_owners.sort(key=lambda x: (x['owner'], x['name']))
 
         return make_response(render_template('territories.html',
                                              defend=good_guy_territories,
