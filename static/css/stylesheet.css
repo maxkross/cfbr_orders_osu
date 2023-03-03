@@ -99,3 +99,10 @@ p {
 #orders tfoot tr:hover{
     background-color: inherit;
 }
+
+#date {
+    height: 30px;
+    border: 1px solid var(--Michigan-blue);
+    font-size: 18px;
+    border-radius: 5px;
+}
