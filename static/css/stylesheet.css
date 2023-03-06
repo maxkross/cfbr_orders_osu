@@ -109,21 +109,27 @@ button {
     border-radius: 5px;
 }
 
+.flex-container {
+    margin: 0 10px;
+}
 .row {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
-    width: 100%
+    width: 100%;
 }
-
 .column {
     display: flex;
     flex-direction: column;
     flex-basis: 100%;
     flex: 1;
 }
-
 .territory-list {
     list-style-type: none;
     text-align: left;
+    padding: 0;
+    margin: 0;
+}
+.territory-list li{
+    padding: 2px 0;
 }
