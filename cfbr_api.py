@@ -26,6 +26,7 @@ class CfbrApi:
 
         return (None,)
 
+    @staticmethod
     def get_territories(hoy_d, hoy_m):
         '''
         :returns: array of CFBR territory objects
