@@ -8,7 +8,7 @@ body {
     --Michigan-maize: #FFCB05;
 }
 .body-container {
-    margin: 10 auto;
+    margin: 10px auto;
     background: #EDECEC;
     width: fit-content;
     padding: 10px;
