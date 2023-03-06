@@ -75,7 +75,8 @@ class Admin:
                                              orders=composite_orders,
                                              totals=overall_totals,
                                              dates=dropdown_dates,
-                                             pagedate=pagedate))
+                                             pagedate=pagedate,
+                                             is_admin=Admin.is_admin(username)))
 
     @staticmethod
     def build_territory_page(request, username, hoy_d, hoy_m):
@@ -108,7 +109,8 @@ class Admin:
 
         return make_response(render_template('territories.html',
                                              defend=good_guy_territories,
-                                             attack=enemy_targets_with_owners))
+                                             attack=enemy_targets_with_owners,
+                                             is_admin=Admin.is_admin(username)))
 
 
     @staticmethod
