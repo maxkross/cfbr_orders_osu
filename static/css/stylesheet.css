@@ -8,7 +8,7 @@ body {
     --Michigan-maize: #FFCB05;
 }
 .body-container {
-    margin: 10 auto;
+    margin: 10px auto;
     background: #EDECEC;
     width: fit-content;
     padding: 10px;
@@ -107,4 +107,29 @@ button {
     border: 1px solid var(--Michigan-blue);
     font-size: 18px;
     border-radius: 5px;
+}
+
+.flex-container {
+    margin: 0 10px;
+}
+.row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+}
+.column {
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100%;
+    flex: 1;
+}
+.territory-list {
+    list-style-type: none;
+    text-align: left;
+    padding: 0;
+    margin: 0;
+}
+.territory-list li{
+    padding: 2px 0;
 }
