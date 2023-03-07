@@ -20,6 +20,49 @@
 <table id="orders">
     <thead>
         <tr>
+            <th>Tier</th>
+            <th>Players</th>
+            <th>Quota</th>
+            <th>Assigned<br/>Stars</th>
+            <th>Quota %</th>
+            <th>Total<br/>Territories</th>
+            <th>Completed<br/>Territories</th>
+            <th>Completed %</th>
+        </tr>
+    </thead>
+    {% for order in orders: %}
+        {% if order.sumrow %}
+            <tr id="sumrow">
+                <td>{{order.tier}}</td>
+                <td>{{order.nplayers}}</td>
+                <td>{{order.quota}}</td>
+                <td>{{order.assigned}}</td>
+                <td>{{order.display_pct}}</td>
+                <td>{{order.nterritories}}</td>
+                <td>{{order.ncompleted}}</td>
+                <td>{{order.completed_pct}}</td>
+            </tr>
+        {% endif %}
+    {% endfor %}
+    {% if totals %}
+    <tfoot>
+        <tr>
+            <td colspan>Totals</td>
+            <td>{{totals.nplayers}}</td>
+            <td>{{totals.quota}}</td>
+            <td>{{totals.assigned}}</td>
+            <td>{{totals.display_pct}}</td>
+            <td>{{totals.nterritories}}</td>
+            <td>{{totals.ncompleted}}</td>
+            <td>{{totals.completed_pct}}</td>
+        </tr>
+    </tfoot>
+    {% endif %}
+</table>
+<p></p>
+<table id="orders">
+    <thead>
+        <tr>
             <th>Territory</th>
             <th>Tier</th>
             <th>Quota</th>

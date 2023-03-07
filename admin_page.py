@@ -21,9 +21,13 @@ class Admin:
 
         composite_orders = []
         overall_totals = {
+            "nplayers": 0,
             "quota": 0,
             "assigned": 0,
-            "display_pct": "0%"
+            "display_pct": "0%",
+            "nterritories": 0,
+            "ncompleted": 0,
+            "completed_pct": "0%"
         }
 
         # What day did you request?
@@ -59,11 +63,9 @@ class Admin:
             # Now that we're done, we have to put out the final tier total and the overall total
             composite_orders.append(display_sum_row(elegido_d, elegido_m, cur_tier))
 
-            total_quota, total_assigned = Orders.get_day_totals(elegido_d, elegido_m)
-            if total_quota > 0:
-                overall_totals['quota'] = total_quota
-                overall_totals['assigned'] = total_assigned
-                overall_totals['display_pct'] = '{:.1%}'.format(total_assigned / total_quota)
+            overall_totals = Orders.get_day_totals(elegido_d, elegido_m)
+            overall_totals['display_pct'] = '{:.1%}'.format(overall_totals['assigned'] / overall_totals['quota'])
+            overall_totals['completed_pct'] = '{:.1%}'.format(overall_totals['ncompleted'] / overall_totals['nterritories'])
 
         dropdown_dates = populate_date_dropdown()
         pagedate = f"{elegido_m}/{elegido_d}"
@@ -134,17 +136,15 @@ class Admin:
 
 def display_sum_row(hoy_d, hoy_m, tier):
     quota, assigned = Orders.get_day_and_tier_totals(hoy_d, hoy_m, tier)
-    nterritories, ncompleted = Orders.get_tier_territory_summary(hoy_d, hoy_m, tier)
+    sumrow = Orders.get_tier_territory_summary(hoy_d, hoy_m, tier)
     if quota > 0:
-        return {
+        return sumrow | {
             "sumrow": True,
             "tier": tier,
             "quota": quota,
             "assigned": assigned,
             "display_pct": '{:.1%}'.format(assigned / quota),
-            "nterritories": nterritories,
-            "ncompleted": ncompleted,
-            "completed_pct": '{:.1%}'.format(ncompleted / nterritories)
+            "completed_pct": '{:.1%}'.format(sumrow['ncompleted'] / sumrow['nterritories'])
         }
 
 def populate_date_dropdown():
