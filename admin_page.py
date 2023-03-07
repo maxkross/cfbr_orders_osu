@@ -94,18 +94,26 @@ class Admin:
         good_guy_territories = list(filter(lambda x: x['owner'] == THE_GOOD_GUYS, cur_territories))
         good_guy_territories.sort(key=lambda x: x['name'])
 
+        protected_territories = []
         enemy_targets = []
         enemy_targets_with_owners = []
 
         for us in good_guy_territories:
+            protected = True
             for them in us['neighbors']:
-                if them['owner'] != us['owner'] and them['name'] not in enemy_targets:
-                    enemy_targets.append(them['name'])
-                    enemy_targets_with_owners.append({
-                        "name": them['name'],
-                        "owner": them['owner']
-                    })
+                if them['owner'] != us['owner']:
+                    protected = False
+                    if them['name'] not in enemy_targets:
+                        enemy_targets.append(them['name'])
+                        enemy_targets_with_owners.append({
+                            "name": them['name'],
+                            "owner": them['owner']
+                        })
+            if protected:
+                protected_territories.append(us['name'])
+
         enemy_targets_with_owners.sort(key=lambda x: (x['owner'], x['name']))
+        good_guy_territories = list(filter(lambda x: x['name'] not in protected_territories, good_guy_territories))
 
         return make_response(render_template('territories.html',
                                              defend=good_guy_territories,
