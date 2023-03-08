@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 
-sqlite3 files/cfbrisk.db <<EOF
+DBFILE=files/cfbrisk.db
+
+if [ -f $DBFILE ]; then
+    BACKUP=${DBFILE}.$(date +%s)
+    echo "Backing up (moving) existing $DBFILE to $BACKUP..."
+    mv $DBFILE $BACKUP
+fi
+
+echo "Creating $DBFILE..."
+
+sqlite3 $DBFILE <<EOF
 
 BEGIN TRANSACTION;
 
@@ -24,6 +34,7 @@ CREATE TABLE IF NOT EXISTS plans (
     territory INTEGER NOT NULL,
     tier INTEGER,
     quota INTEGER,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
@@ -48,6 +59,7 @@ CREATE TABLE IF NOT EXISTS orders (
     stars INTEGER,
     accepted BOOLEAN DEFAULT FALSE,
     uuid TEXT NOT NULL UNIQUE,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
@@ -62,6 +74,7 @@ CREATE TABLE IF NOT EXISTS offers (
     stars INTEGER NOT NULL,
     rank INTEGER NOT NULL DEFAULT 0,
     uuid TEXT NOT NULL UNIQUE,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (territory)
         REFERENCES territory (id)
 );
@@ -311,3 +324,5 @@ INSERT INTO users VALUES(9,"Belgara",6);
 COMMIT;
 
 EOF
+
+echo "Done"

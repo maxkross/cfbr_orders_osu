@@ -1,5 +1,6 @@
 from cfbr_db import Db
 from uuid import uuid4
+from functools import reduce
 
 ###############################################################
 #
@@ -318,14 +319,54 @@ class Orders:
             )
         '''
         res = Db.get_db().execute(query, (hoy_m, hoy_d))
-        # We'll always get a tuple back, but if it's (None,) we need to coerce that to zero
-        quota = res.fetchone()[0] or 0
+        row = res.fetchone()
+        if row:
+            quota = row[0]
+        else:
+            quota = 0
         res.close()
 
-        # Next, get the assigned stars total
+        if quota:
+            # We have some territories in the plans, so let's see a) how many and b) how many are complete
+            query = '''
+                SELECT
+                    SUM(o.stars) / CAST(p.quota AS REAL) AS pct
+                FROM
+                    plans p LEFT JOIN orders o ON (
+                        p.season=o.season
+                        AND p.day=o.day
+                        AND p.territory=o.territory
+                        AND o.accepted=TRUE
+                    )
+                WHERE
+                    p.season=?
+                    AND p.day=?
+                    AND p.tier in (
+                        SELECT MAX(c.tier)
+                        FROM plans c
+                        WHERE c.territory=p.territory
+                            AND c.season=p.season
+                            AND c.day=p.day
+                    )
+                GROUP BY
+                    p.territory;
+            '''
+            res = Db.get_db().execute(query, (hoy_m, hoy_d))
+            all_pcts = res.fetchall()
+            res.close()
+            nterritories = len(all_pcts) or 0
+            if nterritories:
+                ncompleted = len(list(filter(lambda x: (x[0] or 0) >= 1.0, all_pcts)))
+            else:
+                ncompleted = 0
+        else:
+            nterritories = ncompleted = 0
+
+        # Finally, get the assigned stars total and number of players
         query = '''
             SELECT
-                SUM(stars) AS stars
+                SUM(stars) AS stars,
+                COUNT(DISTINCT user) AS players
             FROM
                 orders o
             WHERE
@@ -342,7 +383,62 @@ class Orders:
         '''
         res = Db.get_db().execute(query, (hoy_m, hoy_d))
         # We'll always get a tuple back, but if it's (None,) we need to coerce that to zero
-        assigned = res.fetchone()[0] or 0
+        row = res.fetchone()
+        if row:
+            assigned = row[0]
+            nplayers = row[1]
+        else:
+            assigned = nplayers = 0
+
         res.close()
 
-        return (quota, assigned)
+        return {
+            "nplayers": nplayers,
+            "quota": quota,
+            "assigned": assigned,
+            "nterritories": nterritories,
+            "ncompleted": ncompleted
+        }
+
+    @staticmethod
+    def get_tier_territory_summary(hoy_d, hoy_m, tier):
+        query = '''
+            SELECT
+                t.name,
+                p.quota,
+                SUM(o.stars) AS assigned,
+                SUM(o.stars) / CAST(p.quota AS REAL) AS pct,
+                COUNT(DISTINCT o.user) AS players
+            FROM
+                plans p LEFT JOIN orders o ON (
+                    p.season=o.season
+                    AND p.day=o.day
+                    AND p.territory=o.territory
+                    AND o.accepted=TRUE
+                ) INNER JOIN territory t ON (
+                    p.territory=t.id
+                )
+            WHERE
+                p.season=?
+                AND p.day=?
+                AND p.tier=?
+            GROUP BY
+                t.name
+            ORDER BY
+                pct ASC;
+        '''
+        res = Db.get_db().execute(query, (hoy_m, hoy_d, tier))
+        tary = res.fetchall()
+        res.close()
+
+        nterritories = len(tary) or 0
+        # In cases where the LEFT JOIN produces nothing in orders (eg, territory has no assigned orders)
+        # we need to cast the percentage to an int.  Since NoneType isn't directly castable, we need
+        # to resort to `int(x[3] or 0)`.
+        ncompleted = len(list(filter(lambda x: int(x[3] or 0) >= 1, tary))) or 0
+        nplayers = reduce(lambda a, b: a + b[4], tary, 0)
+        return {
+            "nterritories": nterritories,
+            "ncompleted": ncompleted,
+            "nplayers": nplayers
+        }

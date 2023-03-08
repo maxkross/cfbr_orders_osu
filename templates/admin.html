@@ -1,11 +1,65 @@
 {% extends 'index.html' %}
 
-{% block title %} Admin {% endblock %}
+{% block title %}Admin{% endblock %}
 
 {% block body %}
-<p><a href='./'>Home</a> | <a href='./upload'>Upload</a></p>
+{% if dates %}
+<p>
+<div id="dates_dropdown">
+    <label for="date">View date:</label>
+    <select name="date" id="date" onchange="loadDate(this.value)">
+        {% for d in dates: %}
+            <option value="{{d}}" {% if d == pagedate %} selected {% endif %}>{{d}}</option>
+        {% endfor %}
+    </select>
+</div>
+</p>
+{% endif %}
 <div id="orders-container">
 {% if orders %}
+<table id="orders">
+    <thead>
+        <tr>
+            <th>Tier</th>
+            <th>Players</th>
+            <th>Quota</th>
+            <th>Assigned<br/>Stars</th>
+            <th>Quota %</th>
+            <th>Total<br/>Territories</th>
+            <th>Completed<br/>Territories</th>
+            <th>Completed %</th>
+        </tr>
+    </thead>
+    {% for order in orders: %}
+        {% if order.sumrow %}
+            <tr id="sumrow">
+                <td>{{order.tier}}</td>
+                <td>{{order.nplayers}}</td>
+                <td>{{order.quota}}</td>
+                <td>{{order.assigned}}</td>
+                <td>{{order.display_pct}}</td>
+                <td>{{order.nterritories}}</td>
+                <td>{{order.ncompleted}}</td>
+                <td>{{order.completed_pct}}</td>
+            </tr>
+        {% endif %}
+    {% endfor %}
+    {% if totals %}
+    <tfoot>
+        <tr>
+            <td colspan>Totals</td>
+            <td>{{totals.nplayers}}</td>
+            <td>{{totals.quota}}</td>
+            <td>{{totals.assigned}}</td>
+            <td>{{totals.display_pct}}</td>
+            <td>{{totals.nterritories}}</td>
+            <td>{{totals.ncompleted}}</td>
+            <td>{{totals.completed_pct}}</td>
+        </tr>
+    </tfoot>
+    {% endif %}
+</table>
+<p></p>
 <table id="orders">
     <thead>
         <tr>
@@ -19,10 +73,15 @@
     {% for order in orders: %}
         {% if order.sumrow %}
             <tr id="sumrow">
-                <td colspan="2">Tier {{order.tier}}</td>
+                <td colspan="2" rowspan="2">Tier {{order.tier}}</td>
                 <td>{{order.quota}}</td>
                 <td>{{order.assigned}}</td>
                 <td>{{order.display_pct}}</td>
+            </tr>
+            <tr id="sumrow">
+                <td>{{order.nterritories}}<br/>territories</td>
+                <td>{{order.ncompleted}}<br/>completed</td>
+                <td>{{order.completed_pct}}</td>
             </tr>
         {% else %}
             <tr>
@@ -49,5 +108,11 @@
     Orders don't seem to be loaded yet.
 {% endif %}
 </div>
+
+<script>
+function loadDate(value) {
+    window.location.assign(window.location.pathname + '?date='+value);
+}
+</script>
 
 {% endblock %}

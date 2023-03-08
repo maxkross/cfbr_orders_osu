@@ -1,7 +1,9 @@
+<!DOCTYPE html>
 <html>
-    <link href="{{url_for('static', filename='css/stylesheet.css')}}" rel="stylesheet" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <head>
+        <link href="{{url_for('static', filename='css/stylesheet.css')}}" rel="stylesheet" />
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{% block title %} {% endblock %} - What Are My Orders?</title>
     </head>
     <body>
@@ -9,7 +11,7 @@
             <section class="image-container">
                 <img src="{{url_for('static', filename='cfbr_wamo.png')}}">
             </section>
-            {% if is_admin: %}<p><a href='./admin'>Admin</a></p>{% endif %}
+            {% if is_admin: %}<p><a href='/'>Home</a> | <a href='/admin'>Admin</a> | <a href='/admin/territories'>Territories</a></p>{% endif %}
             {% block body %}
             {% endblock %}
         </div>

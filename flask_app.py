@@ -23,138 +23,107 @@ app = Flask(__name__)
 ###############################################################
 
 
+CONFIRMATION_PAGE = "confirmation.html"
+ORDER_PAGE = "order.html"
+ERROR_PAGE = "error.html"
+
 @app.route('/')
 def homepage():
+    cookie = request.cookies.get('a')
     auth_resp_if_necessary, username = check_identity_or_auth(request)
 
     # The user needs to authenticate, short-circuit here.
     if auth_resp_if_necessary:
         return auth_resp_if_necessary
 
-    # Let's get this user's CFBR info
-    response = requests.get(f"{CFBR_REST_API}/player?player={username}")
-    active_team = response.json()['active_team']['name']
-    current_stars = response.json()['ratings']['overall']
+    template_params = {"username": username}
 
-    CONFIRMATION_PAGE = "confirmation.html"
-    ORDER_PAGE = "order.html"
-    ERROR_PAGE = "error.html"
-    template = ERROR_PAGE
-    template_params = {}
+    cfbr_api_user_response = requests.get(f"{CFBR_REST_API}/player?player={username}")
+    try:
+        cfbr_api_user_response.raise_for_status()
+    except requests.exceptions.HTTPError or AttributeError as e:
+        log.error(f"{username}: Reddit user who doesn't play CFBR tried to log in")
+        log.error(f"Exception: {e}")
+        template_params |= {
+            "error_message": f"Sorry, you'll need to sign up for CFB Risk and join {THE_GOOD_GUYS} first.",
+            "link": "https://www.collegefootballrisk.com/"
+        }
+        return build_template_response(cookie, ERROR_PAGE, template_params)
 
-    # This is a shitty way to avoid endlessly nested if/else statements and I welcome a refactor.
-    stage = -1
+    active_team = cfbr_api_user_response.json()['active_team']['name']
+    current_stars = cfbr_api_user_response.json()['ratings']['overall']
+    template_params |= {
+        "is_admin": Admin.is_admin(username),
+        "current_stars": current_stars,
+        "hoy": what_day_is_it(),
+        "confirm_url": CONFIRM_URL
+    }
 
     # Enemy rogue or SPY!!!! Just give them someone to attack.
-    # TODO: This codepath is currently broken.  Don't rely on it until it gets fixed again.
     if active_team != THE_GOOD_GUYS:
+        # TODO: This codepath is currently broken.  Don't rely on it until it gets fixed again.
         # order = Orders.get_foreign_order(active_team, CFBR_day(), CFBR_month())
-        template = ERROR_PAGE
-        template_params = {
-            "username": username,
-            "error_message": f"Sorry, you'll need to join {THE_GOOD_GUYS} first."
-        }
+        log.info(f"{username}: Player on {active_team} tried to log in.")
+        template_params |= {"error_message": f"Sorry, you'll need to join {THE_GOOD_GUYS} first."}
+        return build_template_response(cookie, ERROR_PAGE, template_params)
     # Good guys get their assignments here
     else:
         # We now have three states, ordered in reverse chronological:
-        # 3) The user has already accepted an order.  Show them the thank you screen, but remind them what (we think)
+        # 3) The user has already accepted an order.  Show them the thank-you screen, but remind them what (we think)
         #   they did
         # 2) The user has been offered a few options.  Retrieve those options and then display them (or confirm
         #   their choice)
         # 1) The user is showing up for the first time.  Create offers for them and display them.
-        # (...and 0) There aren't any plans available yet to pick from.)
+        # (...and 0) There aren't any plans available yet to pick from.
 
-        if stage == -1:
-            # Stage 3: This user has already been here and done that.
-            existing_move = Orders.user_already_moved(username, CFBR_day(), CFBR_month())
-            if existing_move is not None:
-                stage = 3
-                template = CONFIRMATION_PAGE
-                template_params = {
-                    "username": username,
-                    "territory": existing_move
-                }
-                log.info(f"{username}: Showing them the move they previously made.")
+        # Stage 3: This user has already been here and done that.
+        existing_move = Orders.user_already_moved(username, CFBR_day(), CFBR_month())
+        if existing_move is not None:
+            log.info(f"{username}: Showing them the move they previously made.")
+            template_params |= {"territory": existing_move}
+            return build_template_response(cookie, CONFIRMATION_PAGE, template_params)
 
-        if stage == -1:
-            # They're not in Stage 3.  Are they in stage 2, or did they make a choice?
-            existing_offers = None
-            confirmed_territory = None
-            confirmation = request.args.get('confirmed', default=None, type=str)
-            if confirmation:
-                confirmed_territory = Orders.confirm_offer(username, CFBR_day(), CFBR_month(), confirmation)
+        # They're not in Stage 3.  Are they in stage 2, or did they make a choice?
+        confirmed_territory = None
+        confirmation = request.args.get('confirmed', default=None, type=str)
+        if confirmation:
+            confirmed_territory = Orders.confirm_offer(username, CFBR_day(), CFBR_month(), confirmation)
+        if confirmed_territory:
+            # They made a choice!  Our favorite.
+            log.info(f"{username}: Chose to move on {confirmed_territory}")
+            template_params |= {"territory": confirmed_territory}
+            return build_template_response(cookie, CONFIRMATION_PAGE, template_params)
+        else:
+            existing_offers = Orders.user_already_offered(username, CFBR_day(), CFBR_month())
+        if existing_offers is not None and len(existing_offers) > 0:
+            log.info(f"{username}: Showing them their previous offers.")
+            template_params |= {"orders": existing_offers}
+            return build_template_response(cookie, ORDER_PAGE, template_params)
 
-            if confirmed_territory:
-                # They made a choice!  Our favorite.
-                stage = 2
-                template = CONFIRMATION_PAGE
-                template_params = {
-                    "username": username,
-                    "territory": confirmed_territory
-                }
-                log.info(f"{username}: Chose to move on {confirmed_territory}")
-            else:
-                existing_offers = Orders.user_already_offered(username, CFBR_day(), CFBR_month())
+        # I guess they're in Stage 1: Make them an offer
+        new_offer_territories = Orders.get_next_offers(CFBR_day(), CFBR_month(), current_stars)
+        if len(new_offer_territories) > 0:
+            new_offers = []
+            for i in range(len(new_offer_territories)):
+                offer_uuid = Orders.write_new_offer(username, new_offer_territories[i],
+                                                    CFBR_day(), CFBR_month(), current_stars, i)
+                new_offers.append((new_offer_territories[i], offer_uuid))
+            log.info(f"{username}: Generated new offers.")
+            template_params |= {"orders": new_offers}
+            return build_template_response(cookie, ORDER_PAGE, template_params)
+        else:
+            log.info(f"{username}: Tried to generate new offers and failed. Are the plans loaded for today?")
 
-            if existing_offers is not None and len(existing_offers) > 0:
-                stage = 2
-                template = ORDER_PAGE
-                template_params = {
-                    "username": username,
-                    "current_stars": current_stars,
-                    "hoy": what_day_is_it(),
-                    "orders": existing_offers,
-                    "confirm_url": CONFIRM_URL
-                }
-                log.info(f"{username}: Showing them their previous offers.")
+        # Nope sorry we're in stage 0: Ain't no orders available yet.  We'll use the order template
+        # sans orders until we create a page with a sick meme telling the Strategists to hurry up.
+        log.warning(f"{username}: Hit the 'No Orders Loaded' page")
+        return build_template_response(cookie, ORDER_PAGE, template_params)
 
-        if stage == -1:
-            # I guess they're in Stage 1: Make them an offer
-            new_offer_territories = Orders.get_next_offers(CFBR_day(), CFBR_month(), current_stars)
 
-            if len(new_offer_territories) > 0:
-                new_offers = []
-                for i in range(len(new_offer_territories)):
-                    offer_uuid = Orders.write_new_offer(username, new_offer_territories[i],
-                        CFBR_day(), CFBR_month(), current_stars, i)
-                    new_offers.append((new_offer_territories[i], offer_uuid))
-
-                stage = 1
-                template = ORDER_PAGE
-                template_params = {
-                    "username": username,
-                    "current_stars": current_stars,
-                    "hoy": what_day_is_it(),
-                    "orders": new_offers,
-                    "confirm_url": CONFIRM_URL
-                }
-                log.info(f"{username}: Generated new offers.")
-            else:
-                log.info(f"{username}: Tried to generate new offers and failed. Are the plans loaded for today?")
-
-        if stage == -1:
-            # Nope sorry we're in stage 0: Ain't no orders available yet.  We'll use the order template
-            # sans orders until we create a page with a sick meme telling the Strategists to hurry up.
-            stage = 0
-            template = ORDER_PAGE
-            template_params = {
-                "username": username,
-                "current_stars": current_stars,
-                "hoy": what_day_is_it()
-            }
-            log.warning(f"{username}: Hit the 'No Orders Loaded' page")
-
-    template_params["is_admin"] = Admin.is_admin(username)
-    try:
-        resp = make_response(render_template(template, **template_params))
-        resp.set_cookie('a', request.cookies.get('a'))
-    except Exception as e:
-        error = "Go sign up for CFB Risk."
-        log.error(f"{username},Reddit user who doesn't play CFBR tried to log in (???)")
-        log.error(f"   unknown,Exception while rendering for stage {stage}: {e}")
-        resp = make_response(render_template('error.html', username=username,
-                                                error_message=error,
-                                                link="https://www.collegefootballrisk.com/"))
+def build_template_response(cookie, template, template_params):
+    resp = make_response(render_template(template, **template_params))
+    if cookie:
+        resp.set_cookie('a', cookie)
     return resp
 
 
@@ -170,10 +139,16 @@ def reddit_callback():
         abort(403)
     code = request.args.get('code')
     access_token = get_token(code)
+    if access_token:
+        response = make_response(redirect('/'))
+        response.set_cookie('a', access_token.encode())
+        return response
+    template_params = {
+        "error_message": f"Sorry, there was a problem authenticating you. Please contact the devs on Discord.",
+        "link": "https://discord.gg/xTqU2UmmU5"
+    }
+    return build_template_response(None, ERROR_PAGE, template_params)
 
-    response = make_response(redirect('/'))
-    response.set_cookie('a', access_token.encode())
-    return response
 
 
 @app.route('/admin')
@@ -185,6 +160,17 @@ def admin_page():
         return auth_resp_if_necessary
 
     return Admin.build_page(request, username, CFBR_day(), CFBR_month())
+
+@app.route('/admin/territories')
+def admin_territory_page():
+    auth_resp_if_necessary, username = check_identity_or_auth(request)
+
+    # The user needs to authenticate, short-circuit here.
+    if auth_resp_if_necessary:
+        return auth_resp_if_necessary
+
+    return Admin.build_territory_page(request, username, CFBR_day(), CFBR_month())
+
 
 @app.route('/upload', methods=["GET", "POST"])
 def upload_page():
@@ -306,6 +292,13 @@ def get_token(code):
                              headers={'User-agent': 'CFB Risk Orders'},
                              data=post_data)
     token_json = response.json()
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        log.error(f"Failed to get Reddit access token.")
+        log.error(f"{token_json=}")
+        log.error(f"Exception: {e}")
+        return
     return token_json['access_token']
 
 

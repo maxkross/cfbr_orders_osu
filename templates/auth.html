@@ -1,8 +1,8 @@
 {% extends 'index.html' %}
 
-{% block title %} Login {% endblock %}
+{% block title %}Login{% endblock %}
 
 {% block body %}
 <h2>Welcome to Michigan CFB Risk Central Command!</h2>
-<p><a href='{{ authlink }}'>Please authenticate.</a></p>
+<p><button onclick="window.location.href='{{authlink}}';" id="auth_button">Sign In with Reddit</button></p>
 {% endblock %}
