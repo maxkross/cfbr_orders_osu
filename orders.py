@@ -384,7 +384,7 @@ class Orders:
         res = Db.get_db().execute(query, (hoy_m, hoy_d))
         row = res.fetchone()
         assigned = row[0] or 0
-        nplayers = row[1]
+        nplayers = row[1] or 0
         res.close()
 
         return {
