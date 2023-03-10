@@ -382,14 +382,9 @@ class Orders:
                     )
         '''
         res = Db.get_db().execute(query, (hoy_m, hoy_d))
-        # We'll always get a tuple back, but if it's (None,) we need to coerce that to zero
         row = res.fetchone()
-        if row:
-            assigned = row[0]
-            nplayers = row[1]
-        else:
-            assigned = nplayers = 0
-
+        assigned = row[0] or 0
+        nplayers = row[1] or 0
         res.close()
 
         return {
