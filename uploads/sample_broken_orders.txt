@@ -1,9 +1,0 @@
-nNorthwest Territories,1,20
-Prince Edward Island,1,10
-dDominican Republic,1,10
-North Los Angeles,1,10
-cCharlottesville,1,10
-Waco,1,10
-Waco,1,20
-bBaja California,2,10
-Sault Ste Marie,2,10
