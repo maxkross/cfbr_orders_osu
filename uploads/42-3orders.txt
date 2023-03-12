@@ -1,0 +1,181 @@
+# Tier 1: 40 stars
+
+Zacatecas,1,40
+Haiti,1,40
+Toledo,1,40
+Annapolis,1,40
+Vancouver,1,40
+
+# Tier 2: 25 stars
+
+Manitoba,2,25
+Palo Alto,2,25
+Missouri,2,25
+Tulsa,2,25
+Stillwater,2,25
+Hocking Hills,2,25
+
+# Tier 3:
+# Defend: 10 stars
+
+Albuquerque,3,10
+Athens,3,10
+Boone,3,10
+Boston,3,10
+Buffalo,3,10
+Charlotte,3,10
+Charlottesville,3,10
+Chiapas,3,10
+Chicago,3,10
+Colorado Springs,3,10
+Cote Nord,3,10
+Denton,3,10
+Dominican Republic,3,10
+East Houston,3,10
+Fayetteville,3,10
+Gainesville,3,10
+Guerrero,3,10
+Hattiesburg,3,10
+Hawai'i,3,10
+Huntington,3,10
+Jamaica,3,10
+Jonesboro,3,10
+Kalamazoo,3,10
+Labrador,3,10
+Lafayette,3,10
+Lansing,3,10
+Las Vegas,3,10
+Lubbock,3,10
+Miami,3,10
+Mobile,3,10
+Monroe,3,10
+Montreal,3,10
+Moose River,3,10
+Murfreesboro,3,10
+México,3,10
+Nebraska,3,10
+New Jersey,3,10
+Norman,3,10
+Nuevo León,3,10
+Oaxaca,3,10
+Orlando,3,10
+Oxford,3,10
+Pampa,3,10
+Philadelphia,3,10
+Provo,3,10
+Regina,3,10
+Reno,3,10
+Ruston,3,10
+Salt Lake City,3,10
+San Antonio,3,10
+San Diego,3,10
+San Marcos,3,10
+Saskatchewan,3,10
+South Bend,3,10
+Statesboro,3,10
+Tabasco,3,10
+Tampa,3,10
+Tempe,3,10
+Thunder Bay,3,10
+Toronto,3,10
+Tucson,3,10
+University Park,3,10
+Winnipeg,3,10
+Winston-Salem,3,10
+
+# Attack: 13 stars
+
+Auburn,3,13
+Birmingham,3,13
+Knoxville,3,13
+Nashville,3,13
+Starkville,3,13
+Tallahassee,3,13
+Troy,3,13
+Clemson,3,13
+Dakotas,3,13
+Lexington,3,13
+Louisville,3,13
+Texarkana,3,13
+Tuscaloosa,3,13
+Amherst,3,13
+Blacksburg,3,13
+Chapel Hill,3,13
+Cincinnati,3,13
+College Park,3,13
+Happy Valley,3,13
+Lynchburg,3,13
+Morgantown,3,13
+Pittsburgh,3,13
+Syracuse,3,13
+Boulder,3,13
+Fort Mcmurray,3,13
+Northwest Territories,3,13
+Ann Arbor,3,13
+Bahamas,3,13
+Baton Rouge,3,13
+Belize,3,13
+Boca Raton,3,13
+Chihuahua,3,13
+Columbia,3,13
+Connecticut,3,13
+Cuba,3,13
+El Paso,3,13
+Guatemala,3,13
+Jalisco,3,13
+Las Cruces,3,13
+Mount Pleasant,3,13
+Muncie,3,13
+Myrtle Beach,3,13
+New Brunswick,3,13
+New Orleans,3,13
+Newfoundland,3,13
+Norfolk,3,13
+North Atlanta,3,13
+Prince Edward Island,3,13
+Puebla,3,13
+Puerto Rico,3,13
+Quintana Roo,3,13
+Raleigh,3,13
+Sault Ste Marie,3,13
+Sherbrooke,3,13
+Sinaloa,3,13
+South Atlanta,3,13
+Veracruz,3,13
+West Lafayette,3,13
+West Point,3,13
+Ypsilanti,3,13
+Yucatán,3,13
+Alberta,3,13
+Austin,3,13
+Baja California,3,13
+College Station,3,13
+Dallas,3,13
+Fort Collins,3,13
+Fort Worth,3,13
+Lawrence,3,13
+Manhattan,3,13
+Nunavut,3,13
+San Jose,3,13
+South Los Angeles,3,13
+Waco,3,13
+West Houston,3,13
+Yukon,3,13
+Alaska,3,13
+Berkeley,3,13
+Boise,3,13
+British Columbia,3,13
+Cariboo,3,13
+Champaign,3,13
+DeKalb,3,13
+Eugene,3,13
+Fresno,3,13
+Logan,3,13
+Memphis,3,13
+Minnesota,3,13
+Pullman,3,13
+Seattle,3,13
+Springfield,3,13
+Western Kentucky,3,13
+Wisconsin,3,13
+Wyoming,3,13

@@ -1,0 +1,168 @@
+# Tier 1: (40 stars each)
+
+Veracruz,1,40
+Tabasco,1,40
+Chiapas,1,40
+Dominican Republic,1,40
+Jamaica,1,40
+Haiti,1,40
+Zacatecas,1,40
+
+#Tier 2:
+#Defend: (10 stars each)
+
+Alaska,2,10
+Amherst,2,10
+Ann Arbor,2,10
+Athens,2,10
+Austin,2,10
+Baja California,2,10
+Baton Rouge,2,10
+Bloomington,2,10
+Boca Raton,2,10
+Boston,2,10
+Boulder,2,10
+Chapel Hill,2,10
+Charlotte,2,10
+Chihuahua,2,10
+Connecticut,2,10
+Cote Nord,2,10
+Dakotas,2,10
+Dallas,2,10
+East Houston,2,10
+El Paso,2,10
+Fayetteville,2,10
+Fort Collins,2,10
+Fort Mcmurray,2,10
+Fort Worth,2,10
+Fresno,2,10
+Gainesville,2,10
+Huntington,2,10
+Jalisco,2,10
+Jonesboro,2,10
+Knoxville,2,10
+Labrador,2,10
+Lafayette,2,10
+Lansing,2,10
+Las Cruces,2,10
+Las Vegas,2,10
+Lexington,2,10
+Logan,2,10
+Lynchburg,2,10
+Manhattan,2,10
+Manitoba,2,10
+Memphis,2,10
+Miami Valley,2,10
+Monroe,2,10
+Myrtle Beach,2,10
+New Brunswick,2,10
+New Jersey,2,10
+Newfoundland,2,10
+Nova Scotia,2,10
+Nunavut,2,10
+Oxford,2,10
+Palo Alto,2,10
+Provo,2,10
+Raleigh,2,10
+Regina,2,10
+Salt Lake City,2,10
+San Antonio,2,10
+San Diego,2,10
+Saskatchewan,2,10
+Sault Ste Marie,2,10
+Sherbrooke,2,10
+South Bend,2,10
+South Los Angeles,2,10
+Stillwater,2,10
+Texarkana,2,10
+Thunder Bay,2,10
+Toledo,2,10
+Troy,2,10
+Tucson,2,10
+Tulsa,2,10
+University Park,2,10
+West Houston,2,10
+West Point,2,10
+Winston-Salem,2,10
+Wisconsin,2,10
+
+# Attack: (15 stars each)
+
+Hattiesburg,2,15
+Mobile,2,15
+Murfreesboro,2,15
+Nashville,2,15
+Starkville,2,15
+Tallahassee,2,15
+Tuscaloosa,2,15
+Auburn,2,15
+Boone,2,15
+Clemson,2,15
+Louisville,2,15
+Tampa,2,15
+Western Kentucky,2,15
+Winnipeg,2,15
+Blacksburg,2,15
+Charlottesville,2,15
+Columbus,2,15
+Durham,2,15
+Hocking Hills,2,15
+Morgantown,2,15
+Norfolk,2,15
+Syracuse,2,15
+Annapolis,2,15
+Bahamas,2,15
+Bowling Green,2,15
+Buffalo,2,15
+Cincinnati,2,15
+Columbia,2,15
+Greenville,2,15
+Guerrero,2,15
+Hawai'i,2,15
+Puerto Rico,2,15
+Kalamazoo,2,15
+Lawrence,2,15
+Miami,2,15
+Montreal,2,15
+Moose River,2,15
+Mount Pleasant,2,15
+Muncie,2,15
+México,2,15
+New Orleans,2,15
+North Atlanta,2,15
+Nuevo León,2,15
+Oaxaca,2,15
+Orlando,2,15
+Philadelphia,2,15
+Prince Edward Island,2,15
+Puebla,2,15
+Sinaloa,2,15
+South Atlanta,2,15
+Statesboro,2,15
+Tamaulipas,2,15
+Toronto,2,15
+West Lafayette,2,15
+Ypsilanti,2,15
+Ames,2,15
+College Station,2,15
+Montana,2,15
+Nebraska,2,15
+Northwest Territories,2,15
+Ruston,2,15
+San Jose,2,15
+Tempe,2,15
+Waco,2,15
+Alberta,2,15
+Berkeley,2,15
+Boise,2,15
+Cariboo,2,15
+Champaign,2,15
+Chicago,2,15
+DeKalb,2,15
+Minnesota,2,15
+North Los Angeles,2,15
+Redwood,2,15
+Reno,2,15
+Springfield,2,15
+Vancouver,2,15
+Yukon,2,15

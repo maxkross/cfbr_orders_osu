@@ -1,0 +1,163 @@
+Alberta,2,10
+Amherst,2,10
+Ann Arbor,2,10
+Annapolis,2,10
+Bahamas,2,10
+Baja California,2,10
+Baton Rouge,2,10
+Belize,2,10
+Bloomington,2,10
+Boone,2,10
+Boulder,2,10
+Buffalo,2,10
+Cariboo,2,10
+Charlotte,2,10
+Chiapas,2,10
+Chicago,2,10
+Chihuahua,2,10
+Cincinnati,2,10
+College Station,2,10
+Colorado Springs,2,10
+Columbus,2,10
+Connecticut,2,10
+Cote Nord,2,10
+Cuba,2,10
+Dakotas,2,10
+Dallas,2,10
+Dominican Republic,2,10
+Durham,2,10
+East Houston,2,10
+Fort Mcmurray,2,10
+Gainesville,2,10
+Greenville,2,10
+Guerrero,2,10
+Happy Valley,2,10
+Hocking Hills,2,10
+Jalisco,2,10
+Jamaica,2,10
+Lafayette,2,10
+Lansing,2,10
+Las Vegas,2,10
+Lynchburg,2,10
+Manhattan,2,10
+Miami,2,10
+Minnesota,2,10
+Missouri,2,10
+Mobile,2,10
+Monroe,2,10
+Montreal,2,10
+Moose River,2,10
+Mount Pleasant,2,10
+Myrtle Beach,2,10
+New Brunswick,2,10
+New Jersey,2,10
+New Orleans,2,10
+Newfoundland,2,10
+Northwest Territories,2,10
+Oaxaca,2,10
+Orlando,2,10
+Oxford,2,10
+Puebla,2,10
+Quintana Roo,2,10
+Reno,2,10
+Saskatchewan,2,10
+Seattle,2,10
+Sherbrooke,2,10
+Sinaloa,2,10
+South Bend,2,10
+Statesboro,2,10
+Syracuse,2,10
+Tampa,2,10
+Tempe,2,10
+Thunder Bay,2,10
+Toledo,2,10
+University Park,2,10
+West Houston,2,10
+West Lafayette,2,10
+Wisconsin,2,10
+Yucatán,2,10
+Yukon,2,10
+Auburn,2,10
+Clemson,2,10
+Starkville,2,10
+Tallahassee,2,10
+Troy,2,10
+Tuscaloosa,2,10
+Columbia,2,10
+Knoxville,2,10
+Lawrence,2,10
+South Atlanta,2,10
+Texarkana,2,10
+Athens,2,10
+Blacksburg,2,10
+Bowling Green,2,10
+Charlottesville,2,10
+Huntington,2,10
+Lexington,2,10
+Miami Valley,2,10
+Morgantown,2,10
+Muncie,2,10
+Norfolk,2,10
+Pittsburgh,2,10
+Winston-Salem,2,10
+Ames,2,10
+Iowa City,2,10
+Manitoba,2,10
+Nunavut,2,10
+Akron,2,10
+Albuquerque,2,10
+Boca Raton,2,10
+Boston,2,10
+Chapel Hill,2,10
+College Park,2,10
+Denton,2,10
+Haiti,2,10
+Hattiesburg,2,10
+Jonesboro,2,10
+Kalamazoo,2,10
+Labrador,2,10
+Las Cruces,2,10
+México,2,10
+Nebraska,2,10
+Philadelphia,2,10
+Salt Lake City,2,10
+Stillwater,2,10
+Tabasco,2,10
+Tucson,2,10
+Tulsa,2,10
+Veracruz,2,10
+West Point,2,10
+Zacatecas,2,10
+Alaska,2,10
+Austin,2,10
+El Paso,2,10
+Eugene,2,10
+Fort Collins,2,10
+Fort Worth,2,10
+Fresno,2,10
+Hawai'i,2,10
+Montana,2,10
+Nuevo León,2,10
+Provo,2,10
+Regina,2,10
+Ruston,2,10
+San Antonio,2,10
+San Diego,2,10
+South Los Angeles,2,10
+Waco,2,10
+Winnipeg,2,10
+Berkeley,2,10
+Boise,2,10
+British Columbia,2,10
+Champaign,2,10
+Corvallis,2,10
+DeKalb,2,10
+Logan,2,10
+Louisville,2,10
+Memphis,2,10
+Pullman,2,10
+San Jose,2,10
+Springfield,2,10
+Vancouver,2,10
+Western Kentucky,2,10
+Wyoming,2,10

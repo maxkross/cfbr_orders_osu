@@ -150,14 +150,15 @@ class Admin:
         file.save(filename)
 
         orders_from_file = read_incoming_orders(filename)
-        orders_from_file.sort(key=lambda x: (x['tier'], x['quota']))
+        orders_from_file = invalidate_duplicates(orders_from_file)
+        orders_with_summaries = add_summary_rows(orders_from_file)
 
         # If all orders in the file are valid, disable_submit is set to false.  Otherwise...
-        disable_submit = not reduce(lambda a,b: a and b['valid'], orders_from_file, True)
+        disable_submit = not reduce(lambda a,b: a and b['valid'], orders_with_summaries, True)
 
         return make_response(render_template('upload.html',
                                              submitted=filename,
-                                             orders=orders_from_file,
+                                             orders=orders_with_summaries,
                                              disable_submit=disable_submit))
 
     @staticmethod
@@ -264,3 +265,81 @@ def validate_territory(terr):
             }
 
     return terr in all_territories_by_name.keys()
+
+
+def invalidate_duplicates(orders):
+    # Short-circuit if there's nothing to do here -- can't have any duplicates if there aren't at least two
+    if len(orders) < 2:
+        return orders
+
+    # This will be easier if we sort by territory & tier
+    orders.sort(key=lambda x: (x['territory'], x['tier']))
+
+    # I'm sure this would be possible with a filter or reduce, but this way is easier to read to me
+    last_terr = last_tier = ''
+    for order in orders:
+        if order['territory'] == last_terr and order['tier'] == last_tier:
+            order['valid'] = False
+        last_terr = order['territory']
+        last_tier = order['tier']
+
+    return orders
+
+
+def add_summary_rows(orders):
+    # Short-circuit if there's nothing to do here
+    if len(orders) == 0:
+        return []
+
+    # Now then.  First things first -- (re)sort the incoming rows by tier => quota => name
+    orders.sort(key=lambda x: (x['tier'], x['quota'], x['territory']))
+
+    with_sumrows = []
+    max_quota_for_territory = {}
+    cur_tier = orders[0]['tier']
+    tier_ct = 0
+    tier_quota = 0
+    tier_valid = True
+    for order in orders:
+        if order['tier'] != cur_tier:
+            with_sumrows.append({
+                "sumrow": True,
+                "tier": cur_tier,
+                "count": tier_ct,
+                "quota": tier_quota,
+                "valid": tier_valid
+            })
+            tier_ct = tier_quota = 0
+            tier_valid = True
+            cur_tier = order['tier']
+
+        if order['valid']:
+            previous_max = max_quota_for_territory[order['territory']] if order['territory'] in max_quota_for_territory.keys() else 0
+            max_quota_for_territory[order['territory']] = max(order['quota'], previous_max)
+
+        tier_ct += 1
+        tier_quota += order['quota']
+        tier_valid = tier_valid and order['valid']
+
+        with_sumrows.append(order)
+
+    if tier_ct > 0:
+        # One final tier sumrow
+        with_sumrows.append({
+            "sumrow": True,
+            "tier": cur_tier,
+            "count": tier_ct,
+            "quota": tier_quota,
+            "valid": tier_valid
+        })
+
+    # And the final tally
+    with_sumrows.append({
+        "sumrow": True,
+        "tier": "all",
+        "count": len(orders),  # TODO: Should this only be valid orders?
+        "quota": reduce(lambda a,b: a+b, max_quota_for_territory.values()),
+        "valid": reduce(lambda a,b: a and b['valid'], orders, True)
+    })
+
+    return with_sumrows

@@ -1,0 +1,61 @@
+{% extends 'index.html' %}
+
+{% block title %}Upload{% endblock %}
+
+{% block body %}
+
+{% if submitted %}
+
+    {% if orders %}
+        <p>Contents of <span style="font-family: 'Courier New', Courier, monospace;">{{submitted}}:</span></p>
+
+        <p>
+        <table id="orders">
+            <thead>
+                <tr>
+                    <th>Territory</th>
+                    <th>Tier</th>
+                    <th>Quota</th>
+                </tr>
+            </thead>
+            {% for row in orders %}
+                {% if not row.sumrow %}
+                    <tr {% if not row.valid %} class="problem" {% endif %}>
+                        <td>{{row['territory']}}</td>
+                        <td>{{row['tier']}}</td>
+                        <td>{{row['quota']}}</td>
+                    </tr>
+                {% else %}
+                    {% if row.tier != 'all' %}
+                        <tr {% if not row.valid %} class="problem" {% endif %} id="sumrow">
+                            <td>Tier {{row.tier}}</td>
+                            <td>{{row.count}} territories</td>
+                            <td>{{row.quota}} stars</td>
+                        </tr>
+                    {% else %}
+                        <tfoot>
+                            <tr {% if not row.valid %} class="problem" {% endif %}>
+                                <td>All Tiers</td>
+                                <td>{{row.count}} territories</td>
+                                <td>{{row.quota}} stars</td>
+                            </tr>
+                        </tfoot>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        </table>
+        </p>
+
+        <button type="button" onclick="" {% if disable_submit %} disabled {% endif %}>Publish</button>
+        <button type="button" onclick="window.location.assign(window.location.pathname)">Reset</button>
+    {% else %}
+        <p>No orders found in <span style="font-family: 'Courier New', Courier, monospace;">{{submitted}}:</span></p>
+    {% endif %}
+{% else %}
+<form action="/upload" method="post" enctype="multipart/form-data">
+    <input style="display:none" type="file" id="orders" name="orders" onchange="form.submit()">
+    <button type="button" onclick="document.getElementById('orders').click()">Upload File</button>
+</form>
+{% endif %}
+
+{% endblock %}
