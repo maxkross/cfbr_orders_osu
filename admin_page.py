@@ -1,10 +1,12 @@
+import os
 from flask import make_response, redirect, render_template
+from werkzeug.utils import secure_filename
+from functools import reduce
 from cfbr_db import Db
 from logger import Logger
 from orders import Orders
 from cfbr_api import CfbrApi
-from constants import THE_GOOD_GUYS
-
+from constants import THE_GOOD_GUYS, UPLOAD_FOLDER
 
 
 log = Logger.getLogger(__name__)
@@ -131,8 +133,32 @@ class Admin:
             log.warn(f"{username}: They don't belong here!  Sending 'em to the root.")
             return make_response(redirect('/'))
 
+        if request.method == 'GET':
+            return make_response(render_template('upload.html'))
 
+        # Form doesn't include the file?
+        if 'orders' not in request.files:
+            return redirect(request.url)
 
+        file = request.files['orders']
+        # Submitted without a file?
+        if file.filename == '':
+            return redirect(request.url)
+
+        sec_filename = secure_filename(file.filename)
+        filename = os.path.join(UPLOAD_FOLDER, sec_filename)
+        file.save(filename)
+
+        orders_from_file = read_incoming_orders(filename)
+        orders_from_file.sort(key=lambda x: (x['tier'], x['quota']))
+
+        # If all orders in the file are valid, disable_submit is set to false.  Otherwise...
+        disable_submit = not reduce(lambda a,b: a and b['valid'], orders_from_file, True)
+
+        return make_response(render_template('upload.html',
+                                             submitted=filename,
+                                             orders=orders_from_file,
+                                             disable_submit=disable_submit))
 
     @staticmethod
     def is_admin(user):
@@ -182,3 +208,59 @@ def populate_date_dropdown():
     dropdown_values.reverse()
 
     return dropdown_values
+
+def read_incoming_orders(fname):
+    incoming_orders = []
+    with open(fname, 'r') as inf:
+        for raw_line in inf:
+            line = raw_line.strip()
+            if len(line) == 0 or line[0] == '#':
+                continue
+
+            try:
+                # Allow comments after '#' on individual lines as well.  Feel free to deconstruct this
+                # line if it's too ugly
+                terr, tier, quota = line.split('#')[0].strip().split(',')
+                tier = int(tier)
+                quota = int(quota)
+                valid = validate_territory(terr)
+            except:
+                terr = 'Error'
+                tier = 0
+                quota = 0
+                valid = False
+
+            incoming_orders.append({
+                "territory": terr,
+                "tier": tier,
+                "quota": quota,
+                "valid": valid
+            })
+
+    return incoming_orders
+
+# Hey Epic, what's the python idiomatic way to make a variable static?
+all_territories_by_name = {}
+
+def validate_territory(terr):
+    # Might as well cache the territory list, it's not big and it's faster than running individual
+    # queries for each territory name
+
+    if len(all_territories_by_name) == 0:
+        query = '''
+            SELECT
+                name, id
+            FROM
+                territory
+        '''
+        res = Db.get_db().execute(query)
+        rows = res.fetchall()
+        res.close()
+
+        for name, id in rows:
+            all_territories_by_name[name] = {
+                "name": name,
+                "id": id
+            }
+
+    return terr in all_territories_by_name.keys()

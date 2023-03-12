@@ -20,6 +20,7 @@ REDDIT_TOKEN_URI = "https://ssl.reddit.com/api/v1/access_token"
 ROOT = Path(__file__).parent
 DB = f"{ROOT}/files/cfbrisk.db"
 LOG_FILE = f"{ROOT}/files/log.txt"
+UPLOAD_FOLDER = "uploads/"
 
 THE_GOOD_GUYS = config['THE_GOOD_GUYS']
 

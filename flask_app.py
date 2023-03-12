@@ -180,8 +180,6 @@ def upload_page():
     if auth_resp_if_necessary:
         return auth_resp_if_necessary
 
-    if
-
     return Admin.build_upload_page(request, username, CFBR_day(), CFBR_month())
 
 
