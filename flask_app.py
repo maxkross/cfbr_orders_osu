@@ -29,6 +29,13 @@ ERROR_PAGE = "error.html"
 
 @app.route('/')
 def homepage():
+
+    if POSTGAME:
+        if POSTGAME == "Yay!":
+            return make_response(render_template('postgame-yay.html'))
+        elif POSTGAME == "Boo!":
+            return make_response(render_template('postgame-boo.html'))
+
     cookie = request.cookies.get('a')
     auth_resp_if_necessary, username = check_identity_or_auth(request)
 

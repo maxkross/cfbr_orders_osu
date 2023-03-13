@@ -3,6 +3,8 @@ from pathlib import Path
 
 config = dotenv_values('.env')
 
+POSTGAME = "Yay!"  # "Yay!" or "Boo!" or None
+
 DOMAIN = config['DOMAIN']
 HTTP_PORT = config['HTTP_PORT']
 BASE_URL = f"http://{DOMAIN}:{HTTP_PORT}"
