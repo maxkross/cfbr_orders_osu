@@ -3,7 +3,7 @@ from pathlib import Path
 
 config = dotenv_values('.env')
 
-POSTGAME = None # "Yay!" or "Boo!" or None
+POSTGAME = "Yay!" # "Yay!" or "Boo!" or None
 
 DOMAIN = config['DOMAIN']
 HTTP_PORT = config['HTTP_PORT']
