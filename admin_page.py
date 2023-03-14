@@ -1,10 +1,12 @@
+import os
 from flask import make_response, redirect, render_template
+from werkzeug.utils import secure_filename
+from functools import reduce
 from cfbr_db import Db
 from logger import Logger
 from orders import Orders
 from cfbr_api import CfbrApi
-from constants import THE_GOOD_GUYS
-
+from constants import THE_GOOD_GUYS, UPLOAD_FOLDER
 
 
 log = Logger.getLogger(__name__)
@@ -124,6 +126,42 @@ class Admin:
 
 
     @staticmethod
+    def build_upload_page(request, username, hoy_d, hoy_m):
+        log.info(f"{username}: Admin upload page request")
+        # First things first: are you allowed to be here?
+        if not Admin.is_admin(username):
+            log.warn(f"{username}: They don't belong here!  Sending 'em to the root.")
+            return make_response(redirect('/'))
+
+        if request.method == 'GET':
+            return make_response(render_template('upload.html'))
+
+        # Form doesn't include the file?
+        if 'orders' not in request.files:
+            return redirect(request.url)
+
+        file = request.files['orders']
+        # Submitted without a file?
+        if file.filename == '':
+            return redirect(request.url)
+
+        sec_filename = secure_filename(file.filename)
+        filename = os.path.join(UPLOAD_FOLDER, sec_filename)
+        file.save(filename)
+
+        orders_from_file = read_incoming_orders(filename)
+        orders_from_file = invalidate_duplicates(orders_from_file)
+        orders_with_summaries = add_summary_rows(orders_from_file)
+
+        # If all orders in the file are valid, disable_submit is set to false.  Otherwise...
+        disable_submit = not reduce(lambda a,b: a and b['valid'], orders_with_summaries, True)
+
+        return make_response(render_template('upload.html',
+                                             submitted=filename,
+                                             orders=orders_with_summaries,
+                                             disable_submit=disable_submit))
+
+    @staticmethod
     def is_admin(user):
         query = '''
             SELECT
@@ -171,3 +209,137 @@ def populate_date_dropdown():
     dropdown_values.reverse()
 
     return dropdown_values
+
+def read_incoming_orders(fname):
+    incoming_orders = []
+    with open(fname, 'r') as inf:
+        for raw_line in inf:
+            line = raw_line.strip()
+            if len(line) == 0 or line[0] == '#':
+                continue
+
+            try:
+                # Allow comments after '#' on individual lines as well.  Feel free to deconstruct this
+                # line if it's too ugly
+                terr, tier, quota = line.split('#')[0].strip().split(',')
+                tier = int(tier)
+                quota = int(quota)
+                valid = validate_territory(terr)
+            except:
+                terr = 'Error'
+                tier = 0
+                quota = 0
+                valid = False
+
+            incoming_orders.append({
+                "territory": terr,
+                "tier": tier,
+                "quota": quota,
+                "valid": valid
+            })
+
+    return incoming_orders
+
+# Hey Epic, what's the python idiomatic way to make a variable static?
+all_territories_by_name = {}
+
+def validate_territory(terr):
+    # Might as well cache the territory list, it's not big and it's faster than running individual
+    # queries for each territory name
+
+    if len(all_territories_by_name) == 0:
+        query = '''
+            SELECT
+                name, id
+            FROM
+                territory
+        '''
+        res = Db.get_db().execute(query)
+        rows = res.fetchall()
+        res.close()
+
+        for name, id in rows:
+            all_territories_by_name[name] = {
+                "name": name,
+                "id": id
+            }
+
+    return terr in all_territories_by_name.keys()
+
+
+def invalidate_duplicates(orders):
+    # Short-circuit if there's nothing to do here -- can't have any duplicates if there aren't at least two
+    if len(orders) < 2:
+        return orders
+
+    # This will be easier if we sort by territory & tier
+    orders.sort(key=lambda x: (x['territory'], x['tier']))
+
+    # I'm sure this would be possible with a filter or reduce, but this way is easier to read to me
+    last_terr = last_tier = ''
+    for order in orders:
+        if order['territory'] == last_terr and order['tier'] == last_tier:
+            order['valid'] = False
+        last_terr = order['territory']
+        last_tier = order['tier']
+
+    return orders
+
+
+def add_summary_rows(orders):
+    # Short-circuit if there's nothing to do here
+    if len(orders) == 0:
+        return []
+
+    # Now then.  First things first -- (re)sort the incoming rows by tier => quota => name
+    orders.sort(key=lambda x: (x['tier'], x['quota'], x['territory']))
+
+    with_sumrows = []
+    max_quota_for_territory = {}
+    cur_tier = orders[0]['tier']
+    tier_ct = 0
+    tier_quota = 0
+    tier_valid = True
+    for order in orders:
+        if order['tier'] != cur_tier:
+            with_sumrows.append({
+                "sumrow": True,
+                "tier": cur_tier,
+                "count": tier_ct,
+                "quota": tier_quota,
+                "valid": tier_valid
+            })
+            tier_ct = tier_quota = 0
+            tier_valid = True
+            cur_tier = order['tier']
+
+        if order['valid']:
+            previous_max = max_quota_for_territory[order['territory']] if order['territory'] in max_quota_for_territory.keys() else 0
+            max_quota_for_territory[order['territory']] = max(order['quota'], previous_max)
+
+        tier_ct += 1
+        tier_quota += order['quota']
+        tier_valid = tier_valid and order['valid']
+
+        with_sumrows.append(order)
+
+    if tier_ct > 0:
+        # One final tier sumrow
+        with_sumrows.append({
+            "sumrow": True,
+            "tier": cur_tier,
+            "count": tier_ct,
+            "quota": tier_quota,
+            "valid": tier_valid
+        })
+
+    # And the final tally
+    with_sumrows.append({
+        "sumrow": True,
+        "tier": "all",
+        "count": len(orders),  # TODO: Should this only be valid orders?
+        "quota": reduce(lambda a,b: a+b, max_quota_for_territory.values()),
+        "valid": reduce(lambda a,b: a and b['valid'], orders, True)
+    })
+
+    return with_sumrows

@@ -11,7 +11,11 @@
             <section class="image-container">
                 <img src="{{url_for('static', filename='cfbr_wamo.png')}}">
             </section>
-            {% if is_admin: %}<p><a href='/'>Home</a> | <a href='/admin'>Admin</a> | <a href='/admin/territories'>Territories</a></p>{% endif %}
+            {% if is_admin: %}<p><a href='/'>Home</a>
+                | <a href='/admin'>Admin</a>
+                | <a href='/admin/territories'>Territories</a>
+                | <a href='/upload'>Upload Orders</a></p>
+            {% endif %}
             {% block body %}
             {% endblock %}
         </div>
