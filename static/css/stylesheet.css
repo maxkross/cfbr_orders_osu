@@ -101,11 +101,6 @@ button {
 #orders tfoot tr:hover{
     background-color: inherit;
 }
-#orders .problem {
-    text-decoration: line-through;
-    color: #cc0000;
-}
-
 
 #date {
     height: 30px;
