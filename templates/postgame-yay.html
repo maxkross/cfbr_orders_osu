@@ -1,0 +1,38 @@
+{% extends 'index.html' %}
+
+{% block title %}Thanks for playing!{% endblock %}
+
+{% block body %}
+
+<p>Thanks for playing Season 3 of College Football Risk!  Your contributions were invaluable!</p>
+
+<p>
+    <section class="image-container">
+        <img src="{{url_for('static', filename='postgame_leaderboard.png')}}"
+            style="max-width: 500px; max-height: 200px; width: auto; height: auto">
+    </section>
+</p>
+
+<p>
+    This calls for Muppets!
+</p>
+
+<p>
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/bv5RQyV3OWQ"
+            title="YouTube video player" frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen></iframe>
+</p>
+
+<p>And you can't have one without the other...</p>
+
+<p>
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/aTU7nahUw20"
+            title="YouTube video player" frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen></iframe>
+</p>
+
+<p>We'll see you next season!</p>
+
+{% endblock %}
