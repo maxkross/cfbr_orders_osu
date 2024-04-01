@@ -3,9 +3,9 @@ body {
     text-align: center;
     width: 100%;
     margin: 0px;
-    background: #00274C;
-    --Michigan-blue: #00274C;
-    --Michigan-maize: #FFCB05;
+    background: #a7b1b7;
+    --Ohio-State-Scarlet: #ba0c2f;
+    --Ohio-State-Grey: #a7b1b7;
 }
 .body-container {
     margin: 10px auto;
@@ -53,16 +53,16 @@ button {
     font-size: 3em;
     line-height: 1em;
     margin: 5px;
-    text-shadow: 0px 0px 5px var(--Michigan-blue);
-    color: var(--Michigan-maize);
+    text-shadow: 0px 0px 5px var(--Ohio-State-Grey);
+    color: var(--Ohio-State-Scarlet);
 }
 .accept_orders {
     width: 90%;
     height: auto;
-/*    background: var(--Michigan-blue);
-    color: var(--Michigan-maize);
+/*    background: var(--Ohio-State-Scarlet);
+    color: var(--Ohio-State-Grey);
     border-radius: 10px;
-    border: solid 1px var(--Michigan-maize);
+    border: solid 1px var(--Ohio-State-Grey);
     outline: none;*/
 }
 
@@ -85,18 +85,18 @@ button {
     padding-top: 12px;
     padding-bottom: 12px;
     text-align: left;
-    background-color: var(--Michigan-blue);
-    color: var(--Michigan-maize);
+    background-color: var(--Ohio-State-Scarlet);
+    color: var(--Ohio-State-Grey);
 }
 #orders #sumrow {
     font-weight: bold;
-    background-color: var(--Michigan-maize);
-    color: var(--Michigan-blue);
+    background-color: var(--Ohio-State-Grey);
+    color: var(--Ohio-State-Scarlet);
 }
 #orders tfoot {
     font-weight: bold;
-    background-color: var(--Michigan-blue);
-    color: var(--Michigan-maize);
+    background-color: var(--Ohio-State-Scarlet);
+    color: var(--Ohio-State-Grey);
 }
 #orders tfoot tr:hover{
     background-color: inherit;
@@ -104,7 +104,7 @@ button {
 
 #date {
     height: 30px;
-    border: 1px solid var(--Michigan-blue);
+    border: 1px solid var(--Ohio-State-Scarlet);
     font-size: 18px;
     border-radius: 5px;
 }

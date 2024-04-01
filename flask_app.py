@@ -53,7 +53,7 @@ def homepage():
         log.error(f"Exception: {e}")
         template_params |= {
             "error_message": f"Sorry, you'll need to sign up for CFB Risk and join {THE_GOOD_GUYS} first.",
-            "link": "https://www.collegefootballrisk.com/"
+            "link": "https://collegefootballrisk.com/"
         }
         return build_template_response(cookie, ERROR_PAGE, template_params)
 
