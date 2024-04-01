@@ -311,15 +311,8 @@ INSERT INTO roles VALUES(4,"hacker");
 INSERT INTO roles VALUES(5,"strategist");
 INSERT INTO roles VALUES(6,"coach");
 
-INSERT INTO users VALUES(1,"dustinruns",5);
-INSERT INTO users VALUES(2,"Tapin42",4);
-INSERT INTO users VALUES(3,"EpicWolverine",6);
-INSERT INTO users VALUES(4,"Groenket",6);
-INSERT INTO users VALUES(5,"Kirsten137",6);
-INSERT INTO users VALUES(6,"shitshaveshine",6);
-INSERT INTO users VALUES(7,"acarrick",6);
-INSERT INTO users VALUES(8,"lAMA_Bear_AMA",6);
-INSERT INTO users VALUES(9,"Belgara",6);
+INSERT INTO users VALUES(1,"rax96",6);
+
 
 COMMIT;
 
