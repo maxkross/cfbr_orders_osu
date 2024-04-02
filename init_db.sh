@@ -312,6 +312,8 @@ INSERT INTO roles VALUES(5,"strategist");
 INSERT INTO roles VALUES(6,"coach");
 
 INSERT INTO users VALUES(1,"rax96",6);
+INSERT INTO users VALUES(2,"lokifire42",6);
+INSERT INTO users VALUES(3,"Disastrous_Rush4196",6);
 
 
 COMMIT;
