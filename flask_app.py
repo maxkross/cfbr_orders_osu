@@ -271,9 +271,14 @@ def check_identity_or_auth(request):
             return (resp, None)
 
     # If we made it this far, we theoretically know the user's identity.  Say so.
+    
+    # First we provide whatever access token we got to reddit and see if it works? There's probably a better way to do this.
     username = get_username(access_token)
 
+    # If reddit doesn't know what's going on with that token, try Discord
     if username == None:
+        # We add the $0 because that's what Mau is doing with discord verification right now.
+        # He wants to make it user ID eventually
         username = get_discord_username(access_token)+"$0"
 
     return (None, username)
@@ -369,6 +374,7 @@ def get_token(code):
 def get_username(access_token):
     headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
     response = requests.get(REDDIT_ACCOUNT_URI, headers=headers)
+    # If reddit or discord fail, then don't return anything
     try:
         me_json = response.json()
     except:
