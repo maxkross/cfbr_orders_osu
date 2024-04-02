@@ -156,6 +156,28 @@ def reddit_callback():
     }
     return build_template_response(None, ERROR_PAGE, template_params)
 
+@app.route(DISCORD_CALLBACK_ROUTE)
+def discord_callback():
+    error = request.args.get('error', '')
+    if error:
+        return "Error: " + error
+    state = request.args.get('state', '')
+    if not is_valid_state(state):
+        # Uh-oh, this request wasn't started by us!
+        log.error(f"unknown,403 from Discord Auth API. WTF bro.")
+        abort(403)
+    code = request.args.get('code')
+    access_token = get_discord_token(code)  
+    if access_token:
+        response = make_response(redirect('/'))
+        response.set_cookie('a', access_token.encode())
+        return response
+    template_params = {
+        "error_message": f"Sorry, there was a problem authenticating you. Please contact the devs on Discord.",
+        "link": "https://discord.gg/xTqU2UmmU5"
+    }
+    return build_template_response(None, ERROR_PAGE, template_params) 
+
 
 
 @app.route('/admin')
@@ -232,21 +254,74 @@ def check_identity_or_auth(request):
     if access_token is None:
         log.debug(f"Incoming request with no access token, telling them to auth the app")
         link = make_authorization_url()
-        resp = make_response(render_template('auth.html', authlink=link))
+        discordlink = make_discord_authorization_url()
+        resp = make_response(render_template('auth.html', authlink=link, discordauthlink=discordlink))
         return (resp, None)
 
     headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
     response = requests.get(REDDIT_ACCOUNT_URI, headers=headers)
     if response.status_code == 401:
-        log.error(f"{access_token},401 Error from CFBR API")
-        link = make_authorization_url()
-        resp = make_response(render_template('auth.html', authlink=link))
-        return (resp, None)
+        headers = {"Authorization": "Bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
+        response = requests.get(DISCORD_ACCOUNT_URI, headers=headers)
+        if response.status_code == 401:
+            log.error(f"{access_token},401 Error from CFBR API")
+            link = make_authorization_url()
+            discordlink = make_discord_authorization_url()
+            resp = make_response(render_template('auth.html', authlink=link, discordauthlink=discordlink))
+            return (resp, None)
 
     # If we made it this far, we theoretically know the user's identity.  Say so.
+    
+    # First we provide whatever access token we got to reddit and see if it works? There's probably a better way to do this.
     username = get_username(access_token)
+
+    # If reddit doesn't know what's going on with that token, try Discord
+    if username == None:
+        # We add the $0 because that's what Mau is doing with discord verification right now.
+        # He wants to make it user ID eventually
+        username = get_discord_username(access_token)+"$0"
+
     return (None, username)
 
+
+###############################################################
+#
+# Discord API helper functions
+#
+###############################################################
+
+def make_discord_authorization_url():
+    params = {"client_id": DISCORD_CLIENT_ID,
+              "response_type": "code",
+              "redirect_uri": DISCORD_REDIRECT_URI,
+              "scope": "identify"}
+    url = f"{DISCORD_AUTH_URI}?{urllib.parse.urlencode(params)}"
+    return url
+
+def get_discord_token(code):
+    client_auth = requests.auth.HTTPBasicAuth(DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET)
+    post_data = {"grant_type": "authorization_code",
+                 "code": code,
+                 "redirect_uri": DISCORD_REDIRECT_URI}
+    response = requests.post(DISCORD_TOKEN_URI,
+                             auth=client_auth,
+                             headers={'User-agent': 'CFB Risk Orders'},
+                             data=post_data)
+    token_json = response.json()
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        log.error(f"Failed to get Discord access token.")
+        log.error(f"{token_json=}")
+        log.error(f"Exception: {e}")
+        return
+    return token_json['access_token']
+
+def get_discord_username(access_token):
+    headers = {"Authorization": "Bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
+    response = requests.get(DISCORD_ACCOUNT_URI, headers=headers)
+    me_json = response.json()
+    return me_json['username']        
 
 ###############################################################
 #
@@ -299,7 +374,11 @@ def get_token(code):
 def get_username(access_token):
     headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
     response = requests.get(REDDIT_ACCOUNT_URI, headers=headers)
-    me_json = response.json()
+    # If reddit or discord fail, then don't return anything
+    try:
+        me_json = response.json()
+    except:
+        return None
     return me_json['name']
 
 
