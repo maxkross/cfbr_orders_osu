@@ -34,9 +34,9 @@ You will need to create a Reddit "app".
 You will also need to create a Discord "app".
 1. Go to https://discord.com/developers/applications
 2. Make an account/sign in
-3. Click New Application
+3. Click "New Application"
 4. Give it an even more sensible name
-5. Click on "OAuth2" on the lefthand side
+5. Click on "OAuth2" on the left hand sidebar
 6. Copy the client ID to the .env file as your `DISCORD_CLIENT_ID`
 7. Generate a secret and copy that to the .env file as your `DISCORD_CLIENT_SECRET`
 8. Enter your redirect URL: `http://localhost:8080/discord_callback`.
@@ -78,7 +78,7 @@ HTTP_PORT=80
 7. Add a new webapp that for the purpose of this tutorial will be <username>.pythonanywhere.com
 8. Select "Flask" as your web framework
 9. Select Python 3.10 as your Python version
-10. Point the path to ```/home/<username>/cfbr_orders/flask_app.py
+10. Point the path to ```/home/<username>/cfbr_orders/flask_app.py```
 11. This will delete whatever is in flask_app.py. Just restore it using git.
 12. Under "Code" Set your working directory AND source code to ```/home/<username>/cfbr_orders```
 13. Scroll up and "Reload" <username>.pythonanywhere.com
