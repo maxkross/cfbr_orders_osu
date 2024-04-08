@@ -138,7 +138,7 @@ def build_template_response(cookie, template, template_params):
 def reddit_callback():
     error = request.args.get('error', '')
     if error:
-        return "Error: " + error
+        return build_template_response(None, ERROR_PAGE, template_params)  
     state = request.args.get('state', '')
     if not is_valid_state(state):
         # Uh-oh, this request wasn't started by us!
@@ -149,6 +149,7 @@ def reddit_callback():
     if access_token:
         response = make_response(redirect('/'))
         response.set_cookie('a', access_token.encode())
+        response.set_cookie('b','reddit')
         return response
     template_params = {
         "error_message": f"Sorry, there was a problem authenticating you. Please contact the devs on Discord.",
@@ -160,7 +161,7 @@ def reddit_callback():
 def discord_callback():
     error = request.args.get('error', '')
     if error:
-        return "Error: " + error
+        return build_template_response(None, ERROR_PAGE, template_params)  
     state = request.args.get('state', '')
     if not is_valid_state(state):
         # Uh-oh, this request wasn't started by us!
@@ -171,10 +172,11 @@ def discord_callback():
     if access_token:
         response = make_response(redirect('/'))
         response.set_cookie('a', access_token.encode())
+        response.set_cookie('b', 'discord')
         return response
     template_params = {
         "error_message": f"Sorry, there was a problem authenticating you. Please contact the devs on Discord.",
-        "link": "https://discord.gg/xTqU2UmmU5"
+        "link": GOOD_GUYS_DISCORD_LINK
     }
     return build_template_response(None, ERROR_PAGE, template_params) 
 
@@ -250,12 +252,13 @@ def what_day_is_it():
 
 def check_identity_or_auth(request):
     access_token = request.cookies.get('a')
+    auth_site = request.cookies.get('b')
 
     if access_token is None:
         log.debug(f"Incoming request with no access token, telling them to auth the app")
-        link = make_authorization_url()
-        discordlink = make_discord_authorization_url()
-        resp = make_response(render_template('auth.html', authlink=link, discordauthlink=discordlink))
+        reddit_link = make_reddit_authorization_url()
+        discord_link = make_discord_authorization_url()
+        resp = make_response(render_template('auth.html', redditauthlink=reddit_link, discordauthlink=discord_link))
         return (resp, None)
 
     headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
@@ -265,18 +268,17 @@ def check_identity_or_auth(request):
         response = requests.get(DISCORD_ACCOUNT_URI, headers=headers)
         if response.status_code == 401:
             log.error(f"{access_token},401 Error from CFBR API")
-            link = make_authorization_url()
-            discordlink = make_discord_authorization_url()
-            resp = make_response(render_template('auth.html', authlink=link, discordauthlink=discordlink))
+            reddit_link = make_reddit_authorization_url()
+            discord_link = make_discord_authorization_url()
+            resp = make_response(render_template('auth.html', redditauthlink=reddit_link, discordauthlink=discord_link))
             return (resp, None)
 
     # If we made it this far, we theoretically know the user's identity.  Say so.
     
-    # First we provide whatever access token we got to reddit and see if it works? There's probably a better way to do this.
-    username = get_username(access_token)
-
-    # If reddit doesn't know what's going on with that token, try Discord
-    if username == None:
+    # First we provide whatever access token we got to the respective website and see if it works? There's probably a better way to do this.
+    if auth_site == 'reddit':
+        username = get_username(access_token)
+    elif auth_site == 'discord':
         # We add the $0 because that's what Mau is doing with discord verification right now.
         # He wants to make it user ID eventually
         username = get_discord_username(access_token)+"$0"
@@ -330,7 +332,7 @@ def get_discord_username(access_token):
 ###############################################################
 
 
-def make_authorization_url():
+def make_reddit_authorization_url():
     state = str(uuid4())
     save_created_state(state)
     params = {"client_id": REDDIT_CLIENT_ID,
@@ -376,10 +378,9 @@ def get_username(access_token):
     response = requests.get(REDDIT_ACCOUNT_URI, headers=headers)
     # If reddit or discord fail, then don't return anything
     try:
-        me_json = response.json()
+        return response.json()['name']
     except:
         return None
-    return me_json['name']
 
 
 ###############################################################

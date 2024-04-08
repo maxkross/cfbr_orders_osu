@@ -3,7 +3,7 @@ from pathlib import Path
 
 config = dotenv_values('.env')
 
-POSTGAME = None
+POSTGAME = None # "Yay!" or "Boo!" or None
 
 DOMAIN = config['DOMAIN']
 HTTP_PORT = config['HTTP_PORT']
@@ -30,6 +30,7 @@ DB = f"{ROOT}/files/cfbrisk.db"
 LOG_FILE = f"{ROOT}/files/log.txt"
 
 THE_GOOD_GUYS = config['THE_GOOD_GUYS']
+GOOD_GUYS_DISCORD_LINK = config['GOOD_GUYS_DISCORD_LINK']
 
 REDDIT_CLIENT_ID = config['REDDIT_CLIENT_ID']
 REDDIT_CLIENT_SECRET = config['REDDIT_CLIENT_SECRET']
