@@ -26,6 +26,8 @@ app = Flask(__name__)
 CONFIRMATION_PAGE = "confirmation.html"
 ORDER_PAGE = "order.html"
 ERROR_PAGE = "error.html"
+REDDIT_SITE = 'reddit'
+DISCORD_SITE = 'discord'
 
 @app.route('/')
 def homepage():
@@ -36,7 +38,7 @@ def homepage():
         elif POSTGAME == "Boo!":
             return make_response(render_template('postgame-boo.html'))
 
-    cookie = request.cookies.get('a')
+    cookie = request.cookies.get('access-token')
     auth_resp_if_necessary, username = check_identity_or_auth(request)
 
     # The user needs to authenticate, short-circuit here.
@@ -130,7 +132,7 @@ def homepage():
 def build_template_response(cookie, template, template_params):
     resp = make_response(render_template(template, **template_params))
     if cookie:
-        resp.set_cookie('a', cookie)
+        resp.set_cookie('access-token', cookie)
     return resp
 
 
@@ -138,6 +140,10 @@ def build_template_response(cookie, template, template_params):
 def reddit_callback():
     error = request.args.get('error', '')
     if error:
+        template_params = {
+            "error_message": f"There was an error with reddit authentication. Please contact the website devs below.",
+            "link": GOOD_GUYS_DISCORD_LINK
+        }
         return build_template_response(None, ERROR_PAGE, template_params)  
     state = request.args.get('state', '')
     if not is_valid_state(state):
@@ -148,18 +154,22 @@ def reddit_callback():
     access_token = get_token(code)
     if access_token:
         response = make_response(redirect('/'))
-        response.set_cookie('a', access_token.encode())
-        response.set_cookie('b','reddit')
+        response.set_cookie('access-token', access_token.encode())
+        response.set_cookie('auth-site',REDDIT_SITE)
         return response
     template_params = {
         "error_message": f"Sorry, there was a problem authenticating you. Please contact the devs on Discord.",
-        "link": "https://discord.gg/xTqU2UmmU5"
+        "link": GOOD_GUYS_DISCORD_LINK
     }
     return build_template_response(None, ERROR_PAGE, template_params)
 
 @app.route(DISCORD_CALLBACK_ROUTE)
 def discord_callback():
     error = request.args.get('error', '')
+    template_params = {
+            "error_message": f"There was an error with discord authentication. Please contact the website devs below.",
+            "link": GOOD_GUYS_DISCORD_LINK
+    }
     if error:
         return build_template_response(None, ERROR_PAGE, template_params)  
     state = request.args.get('state', '')
@@ -171,8 +181,8 @@ def discord_callback():
     access_token = get_discord_token(code)  
     if access_token:
         response = make_response(redirect('/'))
-        response.set_cookie('a', access_token.encode())
-        response.set_cookie('b', 'discord')
+        response.set_cookie('access-token', access_token.encode())
+        response.set_cookie('auth-site', DISCORD_SITE)
         return response
     template_params = {
         "error_message": f"Sorry, there was a problem authenticating you. Please contact the devs on Discord.",
@@ -251,8 +261,8 @@ def what_day_is_it():
 ###############################################################
 
 def check_identity_or_auth(request):
-    access_token = request.cookies.get('a')
-    auth_site = request.cookies.get('b')
+    access_token = request.cookies.get('access-token')
+    auth_site = request.cookies.get('auth-site')
 
     if access_token is None:
         log.debug(f"Incoming request with no access token, telling them to auth the app")
@@ -261,24 +271,25 @@ def check_identity_or_auth(request):
         resp = make_response(render_template('auth.html', redditauthlink=reddit_link, discordauthlink=discord_link))
         return (resp, None)
 
-    headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
-    response = requests.get(REDDIT_ACCOUNT_URI, headers=headers)
-    if response.status_code == 401:
+
+    if auth_site == REDDIT_SITE:
+        headers = {"Authorization": "bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
+        response = requests.get(REDDIT_ACCOUNT_URI, headers=headers)
+    elif auth_site == DISCORD_SITE:
         headers = {"Authorization": "Bearer " + access_token, 'User-agent': 'CFB Risk Orders'}
         response = requests.get(DISCORD_ACCOUNT_URI, headers=headers)
-        if response.status_code == 401:
-            log.error(f"{access_token},401 Error from CFBR API")
-            reddit_link = make_reddit_authorization_url()
-            discord_link = make_discord_authorization_url()
-            resp = make_response(render_template('auth.html', redditauthlink=reddit_link, discordauthlink=discord_link))
-            return (resp, None)
+      
+    if response.status_code == 401:
+        log.error(f"{access_token},401 Error from CFBR API")
+        reddit_link = make_reddit_authorization_url()
+        discord_link = make_discord_authorization_url()
+        resp = make_response(render_template('auth.html', redditauthlink=reddit_link, discordauthlink=discord_link))
+        return (resp, None)
 
     # If we made it this far, we theoretically know the user's identity.  Say so.
-    
-    # First we provide whatever access token we got to the respective website and see if it works? There's probably a better way to do this.
-    if auth_site == 'reddit':
+    if auth_site == REDDIT_SITE:
         username = get_username(access_token)
-    elif auth_site == 'discord':
+    elif auth_site == DISCORD_SITE:
         # We add the $0 because that's what Mau is doing with discord verification right now.
         # He wants to make it user ID eventually
         username = get_discord_username(access_token)+"$0"
